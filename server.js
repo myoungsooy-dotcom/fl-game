@@ -9,96 +9,70 @@ const io = new Server(server);
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-// 방 정보 및 플레이어 위치 저장소
-// { "ROOM123": { players: { "socketId": {x, y, color} } } }
 const rooms = {};
 
-// 랜덤 색상 생성 함수
-function getRandomColor() {
-    const colors = ['#ff4444', '#44ff44', '#4444ff', '#ffff44', '#ff44ff'];
-    return colors[Math.floor(Math.random() * colors.length)];
-}
-
 io.on('connection', (socket) => {
-    console.log('사용자 접속:', socket.id);
-
-    // [방 만들기]
+    // [방 생성]
     socket.on('createRoom', () => {
         const roomCode = Math.random().toString(36).substring(2, 7).toUpperCase();
-        rooms[roomCode] = { players: {} }; // 방 생성시 플레이어 목록 초기화
+        rooms[roomCode] = { 
+            players: {}, 
+            platformLevel: 1, // 플랫폼이 현재 머무는 층
+            maxLevels: 30     // 전체 층수
+        };
         socket.join(roomCode);
         socket.emit('roomCreated', roomCode);
-        console.log(`방 생성됨: ${roomCode}`);
+        
+        // 플랫폼 이동 타이머 시작 (10초마다 한 층씩 내려감)
+        const timer = setInterval(() => {
+            if (rooms[roomCode]) {
+                rooms[roomCode].platformLevel++;
+                if (rooms[roomCode].platformLevel > rooms[roomCode].maxLevels) {
+                    rooms[roomCode].platformLevel = 1; // 다시 1층으로 리셋
+                }
+                io.to(roomCode).emit('platformMove', rooms[roomCode].platformLevel);
+            } else {
+                clearInterval(timer);
+            }
+        }, 10000);
     });
 
-    // [방 접속하기]
+    // [방 접속]
     socket.on('joinRoom', (roomCode) => {
         if (rooms[roomCode]) {
             socket.join(roomCode);
-            
-            // 새 플레이어 초기 위치 및 색상 설정
+            const startLevel = Math.floor(Math.random() * 30) + 1;
             rooms[roomCode].players[socket.id] = {
-                x: 50, // 시작 X 위치
-                y: 50, // 시작 Y 위치
-                color: getRandomColor()
+                level: startLevel,
+                hp: 100,
+                color: '#' + Math.floor(Math.random()*16777215).toString(16)
             };
-
             socket.emit('joinedRoom', {
-                roomCode: roomCode,
-                playerId: socket.id,
-                players: rooms[roomCode].players // 현재 방의 모든 플레이어 정보 전송
+                roomCode,
+                myId: socket.id,
+                players: rooms[roomCode].players,
+                currentPlatform: rooms[roomCode].platformLevel
             });
-
-            // 다른 플레이어들에게 새 플레이어 접속 알림
-            socket.to(roomCode).emit('newPlayer', {
-                id: socket.id,
-                info: rooms[roomCode].players[socket.id]
-            });
-
-            io.to(roomCode).emit('chatMessage', { system: true, text: `새로운 플레이어가 입구에 도착했습니다.` });
+            socket.to(roomCode).emit('newPlayer', { id: socket.id, info: rooms[roomCode].players[socket.id] });
         } else {
-            socket.emit('errorMsg', '존재하지 않는 방 코드입니다.');
+            socket.emit('errorMsg', '방을 찾을 수 없습니다.');
         }
     });
 
-    // [플레이어 이동 정보 수신]
-    socket.on('playerMove', (data) => {
-        // data: { roomCode, x, y }
-        if (rooms[data.roomCode] && rooms[data.roomCode].players[socket.id]) {
-            // 서버 저장소 업데이트
-            rooms[data.roomCode].players[socket.id].x = data.x;
-            rooms[data.roomCode].players[socket.id].y = data.y;
-            
-            // 방 안에 있는 다른 사람들에게만 위치 전달
-            socket.to(data.roomCode).emit('playerMoved', {
-                id: socket.id,
-                x: data.x,
-                y: data.y
-            });
-        }
-    });
-
-    // [채팅 메시지 전송]
+    // [채팅]
     socket.on('sendMessage', (data) => {
-        // data: { roomCode, text, sender }
         io.to(data.roomCode).emit('chatMessage', data);
     });
 
-    // [접속 해제]
     socket.on('disconnect', () => {
-        console.log('사용자 접속 해제:', socket.id);
-        // 모든 방을 돌며 해당 플레이어 삭제
-        for (const roomCode in rooms) {
-            if (rooms[roomCode].players[socket.id]) {
-                delete rooms[roomCode].players[socket.id];
-                io.to(roomCode).emit('playerLeft', socket.id);
-                break;
+        for (const code in rooms) {
+            if (rooms[code].players[socket.id]) {
+                delete rooms[code].players[socket.id];
+                io.to(code).emit('playerLeft', socket.id);
             }
         }
     });
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-    console.log(`서버가 포트 ${PORT}에서 실행 중입니다.`);
-});
+server.listen(PORT, () => console.log(`Server running on ${PORT}`));

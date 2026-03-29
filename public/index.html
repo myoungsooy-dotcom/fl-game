@@ -2,220 +2,123 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>The Platform - Multiplayer Final</title>
+    <title>더 플랫폼: 로얄 완성판</title>
     <script src="/socket.io/socket.io.js"></script>
     <style>
-        body { margin: 0; background: #1a1a1a; color: white; font-family: sans-serif; overflow: hidden; }
-        
-        /* 메뉴 스타일 */
-        #menu, #room-menu { position: absolute; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: rgba(0,0,0,0.9); z-index: 100; }
+        body { margin: 0; background: #000; color: #fff; font-family: 'Courier New', Courier, monospace; overflow: hidden; }
+        #menu, #room-menu { position: absolute; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: #111; z-index: 100; }
         .hidden { display: none !important; }
-        button { padding: 15px 30px; font-size: 20px; cursor: pointer; margin: 10px; border: none; background: #444; color: white; border-radius: 5px; transition: 0.2s; }
-        button:hover { background: #666; transform: scale(1.05); }
-        input { padding: 12px; font-size: 16px; border-radius: 5px; border: 1px solid #555; background: #2a2a2a; color: white; }
         
-        /* 게임 화면 스타일 */
-        #game-area { position: relative; width: 100vw; height: 100vh; display: none; }
-        .player { position: absolute; width: 30px; height: 30px; border-radius: 5px; transition: left 0.1s linear, top 0.1s linear; box-shadow: 0 0 10px rgba(255,255,255,0.5); }
-        .player-label { position: absolute; top: -20px; left: 50%; transform: translateX(-50%); font-size: 12px; white-space: nowrap; color: #aaa; }
+        /* 게임 화면 레이아웃 */
+        #game-container { display: grid; grid-template-columns: 1fr 300px; height: 100vh; }
+        #view-area { position: relative; border-right: 2px solid #333; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        #ui-area { padding: 20px; background: #111; display: flex; flex-direction: column; }
         
-        /* UI 요소 스타일 */
-        #chat-box { position: absolute; bottom: 60px; left: 20px; width: 300px; height: 150px; background: rgba(0,0,0,0.5); overflow-y: auto; padding: 10px; border-radius: 5px; font-size: 14px; }
-        #chat-input { position: absolute; bottom: 20px; left: 20px; width: 300px; }
-        #room-display { position: absolute; top: 10px; right: 10px; font-size: 18px; color: yellow; font-weight: bold; background: rgba(0,0,0,0.5); padding: 5px 10px; border-radius: 5px; }
+        /* 캐릭터 및 플랫폼 비주얼 */
+        .level-info { font-size: 80px; font-weight: bold; color: #555; }
+        #platform { width: 400px; height: 40px; background: #444; border: 4px solid #888; margin-top: 20px; display: none; }
+        #platform.active { background: #fff; box-shadow: 0 0 20px #fff; }
+        
+        #chat-box { flex-grow: 1; border: 1px solid #333; margin: 10px 0; padding: 10px; overflow-y: auto; font-size: 14px; }
+        input { width: 100%; padding: 10px; box-sizing: border-box; background: #222; color: #fff; border: 1px solid #444; }
+        button { padding: 15px 40px; background: #333; color: #fff; border: 1px solid #555; cursor: pointer; font-size: 18px; }
+        button:hover { background: #555; }
     </style>
 </head>
 <body>
 
     <div id="menu">
-        <h1 style="font-size: 48px; margin-bottom: 30px;">THE PLATFORM</h1>
+        <h1>🏢 더 플랫폼: 로얄</h1>
         <button onclick="showRoomMenu()">멀티플레이 시작</button>
     </div>
 
     <div id="room-menu" class="hidden">
-        <h2>멀티플레이 설정</h2>
-        <button onclick="createRoom()" style="background: #28a745;">방 만들기</button>
-        <div style="margin: 20px 0; color: #888;">OR</div>
-        <div style="display: flex; gap: 5px;">
-            <input type="text" id="join-code" placeholder="방 코드 입력" maxlength="5" style="text-transform: uppercase;">
-            <button onclick="joinRoom()" style="font-size: 16px; padding: 12px 20px; background: #007bff;">방 접속</button>
-        </div>
-        <button onclick="location.reload()" style="font-size: 12px; margin-top: 30px; background: #6c757d;">뒤로가기</button>
+        <h2>구역 설정</h2>
+        <button onclick="createRoom()">새 구역 생성 (방 만들기)</button>
+        <p>또는</p>
+        <input type="text" id="join-code" placeholder="구역 코드 입력" style="width: 200px; text-align: center;">
+        <button onclick="joinRoom()" style="margin-top: 10px;">구역 접속</button>
     </div>
 
-    <div id="game-area">
-        <div id="room-display"></div>
-        <div id="chat-box"></div>
-        <input type="text" id="chat-input" placeholder="메시지 입력 후 Enter">
+    <div id="game-container" class="hidden">
+        <div id="view-area">
+            <div id="my-level-text" class="level-info">LEVEL 00</div>
+            <div id="platform"></div>
+            <p id="platform-status">플랫폼 대기 중...</p>
+        </div>
+        <div id="ui-area">
+            <h3 id="room-id-display">ROOM: ----</h3>
+            <div id="status-bar">HP: 100 | 식사: 가능</div>
+            <div id="chat-box"></div>
+            <input type="text" id="chat-input" placeholder="메시지를 입력하세요...">
+        </div>
     </div>
 
     <script>
         const socket = io();
-        let currentRoom = "";
-        let myId = "";
-        
-        // 내 캐릭터 위치 및 움직임 설정
-        let myPosition = { x: 50, y: 50 };
-        const moveSpeed = 15; // 이동 속도
+        let myData = { room: "", id: "", level: 0 };
 
-        // 다른 플레이어 요소들 저장소
-        const remotePlayers = {};
-
-        /* --- 메뉴 및 방 시스템 --- */
         function showRoomMenu() {
             document.getElementById('menu').classList.add('hidden');
             document.getElementById('room-menu').classList.remove('hidden');
         }
 
-        function createRoom() {
-            socket.emit('createRoom');
-        }
-
+        function createRoom() { socket.emit('createRoom'); }
         function joinRoom() {
             const code = document.getElementById('join-code').value.toUpperCase();
             if(code) socket.emit('joinRoom', code);
-            else alert("방 코드를 입력해주세요.");
         }
 
-        // 서버 응답 처리
-        socket.on('roomCreated', (code) => {
-            initializeGame(code, socket.id, {}); // 방 만든 사람은 다른 플레이어 없음
-        });
-
+        socket.on('roomCreated', (code) => enterGame(code));
         socket.on('joinedRoom', (data) => {
-            // data: { roomCode, playerId, players }
-            initializeGame(data.roomCode, data.playerId, data.players);
+            myData.level = data.players[data.myId].level;
+            enterGame(data.roomCode);
+            updatePlatform(data.currentPlatform);
         });
 
-        socket.on('errorMsg', (msg) => alert(msg));
-
-        // 게임 화면 초기화
-        function initializeGame(code, playerId, existingPlayers) {
-            currentRoom = code;
-            myId = playerId;
-            
-            // 메뉴 숨기고 게임 화면 보여주기
+        function enterGame(code) {
+            myData.room = code;
             document.getElementById('room-menu').classList.add('hidden');
-            document.getElementById('game-area').style.display = 'block';
-            document.getElementById('room-display').innerText = "방 코드: " + code;
+            document.getElementById('game-container').classList.remove('hidden');
+            document.getElementById('room-id-display').innerText = "구역: " + code;
+            document.getElementById('my-level-text').innerText = "LEVEL " + myData.level;
+        }
+
+        // 플랫폼 이동 수신
+        socket.on('platformMove', (level) => updatePlatform(level));
+
+        function updatePlatform(level) {
+            const p = document.getElementById('platform');
+            const s = document.getElementById('platform-status');
+            p.style.display = 'block';
             
-            addChatMessage({ system: true, text: `[${code}] 방에 입장했습니다.` });
-
-            // 1. 내 캐릭터 화면에 생성
-            const myInfo = existingPlayers[myId] || { x: 50, y: 50, color: '#ff4444' };
-            myPosition = { x: myInfo.x, y: myInfo.y };
-            createPlayerElement(myId, myInfo, true);
-
-            // 2. 이미 방에 있던 다른 플레이어들 생성
-            for (const id in existingPlayers) {
-                if (id !== myId) {
-                    createPlayerElement(id, existingPlayers[id], false);
-                }
-            }
-            
-            // 이동 이벤트 리스너 등록
-            window.addEventListener('keydown', handleKeyDown);
-        }
-
-        /* --- 플레이어 생성 및 움직임 로직 --- */
-        
-        // 플레이어 사각형 생성 함수
-        function createPlayerElement(id, info, isMe) {
-            const el = document.createElement('div');
-            el.id = 'player-' + id;
-            el.className = 'player';
-            el.style.backgroundColor = info.color;
-            el.style.left = info.x + 'px';
-            el.style.top = info.y + 'px';
-
-            if(isMe) {
-                const label = document.createElement('span');
-                label.className = 'player-label';
-                label.innerText = "나";
-                el.appendChild(label);
-            }
-
-            document.getElementById('game-area').appendChild(el);
-            if (!isMe) remotePlayers[id] = el;
-        }
-
-        // [이동 조작] 키보드 입력 처리 (W, A, S, D)
-        function handleKeyDown(e) {
-            // 채팅창 입력 중엔 이동 불가
-            if(document.activeElement === chatInput) return;
-
-            let moved = false;
-            switch(e.key.toLowerCase()) {
-                case 'w': myPosition.y -= moveSpeed; moved = true; break;
-                case 's': myPosition.y += moveSpeed; moved = true; break;
-                case 'a': myPosition.x -= moveSpeed; moved = true; break;
-                case 'd': myPosition.x += moveSpeed; moved = true; break;
-            }
-
-            if(moved) {
-                // 내 화면 업데이트
-                const myEl = document.getElementById('player-' + myId);
-                myEl.style.left = myPosition.x + 'px';
-                myEl.style.top = myPosition.y + 'px';
-                
-                // 서버에 위치 전송
-                socket.emit('playerMove', {
-                    roomCode: currentRoom,
-                    x: myPosition.x,
-                    y: myPosition.y
-                });
+            if (level === myData.level) {
+                p.classList.add('active');
+                s.innerText = "⭐ 플랫폼 도착! 식사 가능 ⭐";
+            } else {
+                p.classList.remove('active');
+                s.innerText = `플랫폼이 ${level}층에 있습니다.`;
             }
         }
 
-        /* --- 실시간 멀티플레이 이벤트 수신 --- */
-
-        // 다른 플레이어 접속 시
-        socket.on('newPlayer', (data) => {
-            // data: { id, info }
-            createPlayerElement(data.id, data.info, false);
-        });
-
-        // 다른 플레이어 이동 시
-        socket.on('playerMoved', (data) => {
-            // data: { id, x, y }
-            if(remotePlayers[data.id]) {
-                remotePlayers[data.id].style.left = data.x + 'px';
-                remotePlayers[data.id].style.top = data.y + 'px';
-            }
-        });
-
-        // 다른 플레이어 접속 해제 시
-        socket.on('playerLeft', (id) => {
-            if(remotePlayers[id]) {
-                remotePlayers[id].remove();
-                delete remotePlayers[id];
-            }
-        });
-
-        /* --- 채팅 기능 --- */
-        const chatInput = document.getElementById('chat-input');
-        chatInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter' && chatInput.value) {
-                socket.emit('sendMessage', {
-                    roomCode: currentRoom,
-                    text: chatInput.value,
-                    sender: "익명"
-                });
-                chatInput.value = "";
+        // 채팅 기능
+        const input = document.getElementById('chat-input');
+        input.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && input.value) {
+                socket.emit('sendMessage', { roomCode: myData.room, text: input.value, sender: `Level ${myData.level}` });
+                input.value = "";
             }
         });
 
         socket.on('chatMessage', (data) => {
-            addChatMessage(data);
+            const box = document.getElementById('chat-box');
+            const m = document.createElement('div');
+            m.innerText = `${data.sender}: ${data.text}`;
+            box.appendChild(m);
+            box.scrollTop = box.scrollHeight;
         });
 
-        function addChatMessage(data) {
-            const box = document.getElementById('chat-box');
-            const msg = document.createElement('div');
-            msg.innerText = data.system ? data.text : `${data.sender}: ${data.text}`;
-            box.appendChild(msg);
-            box.scrollTop = box.scrollHeight;
-        }
+        socket.on('errorMsg', (m) => alert(m));
     </script>
 </body>
 </html>

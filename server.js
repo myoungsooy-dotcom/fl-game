@@ -5,92 +5,78 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server); // [중요] 여기서 io를 정의해야 아래에서 사용 가능합니다.
+const io = new Server(server, {
+    cors: {
+        origin: "*", // 모든 접속 허용 (Render 배포 시 필수)
+        methods: ["GET", "POST"]
+    }
+});
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-let waitingPlayers = []; // 대기 중인 플레이어 목록
-let rooms = {}; // 활성화된 게임 방 데이터
+let rooms = {}; 
 
 io.on('connection', (socket) => {
     console.log('유저 접속:', socket.id);
 
-    // 1. 게임 참여 요청
-    socket.on('joinGame', (nickname) => {
-        const player = { 
-            id: socket.id, 
-            name: nickname, 
-            hunger: 100, 
-            floor: 0, 
-            alive: true, 
-            color: "#" + Math.floor(Math.random()*16777215).toString(16) 
+    // [방 만들기]
+    socket.on('createRoom', (nickname) => {
+        const roomCode = Math.random().toString(36).substring(2, 7).toUpperCase();
+        const player = { id: socket.id, name: nickname, hunger: 100, floor: 0, alive: true, color: "#2ecc71" };
+        
+        rooms[roomCode] = {
+            code: roomCode,
+            players: [player],
+            food: 120,
+            day: 1,
+            isStarted: false
         };
-        waitingPlayers.push(player);
 
-        console.log(`${nickname} 대기열 합류 (현재: ${waitingPlayers.length}/4)`);
+        socket.join(roomCode);
+        socket.emit('roomCreated', { roomCode, players: rooms[roomCode].players });
+    });
 
-        // 4명이 모이면 게임 시작
-        if (waitingPlayers.length >= 2) {
-            const roomID = 'room_' + Date.now();
-            const playersInRoom = waitingPlayers.splice(0, 2);
+    // [방 입장]
+    socket.on('joinRoom', (data) => {
+        const { roomCode, nickname } = data;
+        const room = rooms[roomCode];
+
+        if (room && !room.isStarted && room.players.length < 4) {
+            const player = { id: socket.id, name: nickname, hunger: 100, floor: 0, alive: true, color: "#3498db" };
+            room.players.push(player);
+            socket.join(roomCode);
             
-            rooms[roomID] = {
-                id: roomID,
-                players: playersInRoom,
-                food: 120,
-                day: 1
-            };
-
-            // 해당 방의 플레이어들에게만 시작 신호 전송
-            playersInRoom.forEach(p => {
-                io.to(p.id).emit('gameStart', { room: rooms[roomID], myID: p.id });
-            });
-            
-            console.log(`방 생성됨: ${roomID}`);
+            io.to(roomCode).emit('playerJoined', { players: room.players });
         } else {
-            // 대기 중인 인원수 알림
-            io.emit('waiting', waitingPlayers.length);
+            socket.emit('joinError', '방이 없거나 가득 찼습니다.');
         }
     });
 
-    // 2. 음식 섭취 동기화
-    socket.on('playerEat', (data) => {
-        const room = rooms[data.roomID];
+    // [게임 시작]
+    socket.on('startGame', (roomCode) => {
+        const room = rooms[roomCode];
         if (room) {
-            room.food -= data.amount;
-            // 방 안의 모든 유저에게 업데이트된 음식 수치 전송
-            io.emit('syncEat', { eaterID: data.eaterID, newFood: room.food });
+            room.isStarted = true;
+            io.to(roomCode).emit('gameStart', { room });
         }
     });
 
-    // 3. 플랫폼 탑승 동기화
-    socket.on('playerRide', (data) => {
-        io.emit('syncRide', { riderID: data.riderID });
+    // [음식 동기화]
+    socket.on('playerEat', (data) => {
+        const room = rooms[data.roomCode];
+        if (room && room.food > 0) {
+            room.food -= 40;
+            io.to(data.roomCode).emit('syncEat', { eaterID: socket.id, newFood: room.food });
+        }
     });
 
-    // 4. 파이프 공격 동기화
-    socket.on('playerAttack', (data) => {
-        io.emit('syncAttack', { attackerID: socket.id, targetID: data.targetID, damage: data.damage });
-    });
-
-    // 5. 채팅 동기화
-    socket.on('sendMsg', (data) => {
-        io.emit('receiveMsg', data);
-    });
-
-    // 6. 접속 종료 처리
     socket.on('disconnect', () => {
-        waitingPlayers = waitingPlayers.filter(p => p.id !== socket.id);
         console.log('유저 나감:', socket.id);
     });
 });
 
+// [중요] Render 배포를 위한 포트 설정
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-    console.log(`
-    =========================================
-    THE PLATFORM 서버가 가동되었습니다!
-    주소: http://localhost:${PORT}
-    =========================================
-    `);
+server.listen(PORT, '0.0.0.0', () => {
+    console.log(`서버 가동 중: 포트 ${PORT}`);
 });

@@ -2,10 +2,9 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>The Platform Royale - Solo & Multi</title>
+    <title>The Platform: Ultimate Survival</title>
     <script src="/socket.io/socket.io.js"></script>
     <style>
-        /* (디자인 스타일은 동일합니다 - 중략) */
         body { background-color: #0d0d0d; color: white; font-family: 'Pretendard', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; overflow: hidden; }
         #blackout { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: black; z-index: 200; pointer-events: none; opacity: 0; transition: opacity 0.4s; }
         #blackout.active { opacity: 1; }
@@ -13,27 +12,21 @@
         .menu-title { font-size: 4em; color: #ff4757; text-shadow: 0 0 30px #ff4757; margin-bottom: 40px; font-weight: 900; }
         .btn-menu { display: block; width: 280px; padding: 18px; margin: 12px; background: transparent; color: white; border: 2px solid #ff4757; font-size: 1.3em; cursor: pointer; transition: 0.4s; font-weight: bold; }
         .btn-menu:hover { background: #ff4757; box-shadow: 0 0 20px #ff4757; transform: scale(1.05); }
-        .btn-solo { border-color: #3498db; }
-        .btn-solo:hover { background: #3498db; box-shadow: 0 0 20px #3498db; }
         #game-wrapper { display: flex; gap: 20px; padding: 20px; max-width: 1200px; height: 85vh; }
         .hidden { display: none !important; }
         #tower { border: 6px solid #2f3542; width: 280px; background: #1e1e2e; position: relative; flex-shrink: 0; }
         .floor { height: 25%; border-bottom: 2px solid #2f3542; position: relative; display: flex; align-items: center; justify-content: center; gap: 5px; }
         .floor-num { position: absolute; left: 10px; top: 10px; color: #57606f; font-weight: bold; }
         #platform-overlay { width: 100%; height: 25%; background: rgba(255, 159, 26, 0.2); border: 4px solid #ff9f1a; position: absolute; top: -100%; left: 0; transition: top 0.6s cubic-bezier(0.2, 0.8, 0.2, 1); box-shadow: 0 0 25px #ff9f1a; z-index: 5; }
-        .player { width: 50px; height: 50px; border-radius: 50%; border: 3px solid white; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: bold; transition: 0.2s; }
+        .player { width: 60px; height: 60px; border-radius: 50%; border: 3px solid white; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: bold; font-size: 10px; transition: 0.2s; text-align: center; }
         .player.you { border-color: #2ecc71; box-shadow: 0 0 15px #2ecc71; z-index: 10; }
         #central-ui { width: 320px; display: flex; flex-direction: column; gap: 15px; }
         .panel { background: #1a1a1a; border: 1px solid #333; padding: 15px; border-radius: 10px; }
         #timer-display { font-size: 3.5em; color: #ff4757; text-align: center; font-weight: 900; }
-        .btn-action { width: 100%; padding: 12px; margin-top: 8px; font-weight: bold; border: none; border-radius: 5px; cursor: pointer; transition: 0.3s; }
-        .btn-eat-group { display: flex; gap: 5px; margin-top: 8px; }
-        #eat1-btn { background: #ff4757; color: white; flex: 1; }
-        #eat2-btn { background: #c0392b; color: white; flex: 1; }
-        #ride-btn { background: #ff9f1a; color: white; }
-        #weapon-btn { background: #57606f; color: white; border: 1px solid #888; }
-        #weapon-btn.ready { background: #747d8c; border-color: #f1f2f6; box-shadow: 0 0 10px #fff; }
-        button:disabled { background: #333 !important; color: #666 !important; cursor: not-allowed; }
+        .btn-action { width: 100%; padding: 12px; margin-top: 8px; font-weight: bold; border: none; border-radius: 5px; cursor: pointer; }
+        .stat-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 14px; }
+        .hp-bar-bg { width: 100%; height: 8px; background: #333; border-radius: 4px; overflow: hidden; margin-bottom: 10px; }
+        .hp-bar-fill { height: 100%; background: #ff4757; transition: width 0.5s; }
         #chat-panel { width: 350px; background: #1a1a1a; border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; }
         #chat-messages { flex: 1; height: 350px; overflow-y: auto; font-size: 13px; padding: 10px; background: #000; }
         .msg { margin-bottom: 8px; padding: 5px; border-radius: 4px; background: #1a1a1a; border-left: 3px solid #ff4757; }
@@ -41,17 +34,16 @@
 </head>
 <body>
     <div id="blackout"></div>
-
     <div id="menu-screen">
         <h1 class="menu-title">THE PLATFORM</h1>
-        <button class="btn-menu btn-solo" onclick="uiSoloStart()">혼자하기</button>
+        <button class="btn-menu" style="border-color:#3498db;" onclick="uiSoloStart()">혼자하기</button>
         <button class="btn-menu" onclick="uiCreateRoom()">방 만들기</button>
         <div style="margin-top:20px;">
-            <input type="text" id="room-input" placeholder="코드 입력" style="padding:15px; width:120px; text-align:center; background:#000; color:#fff; border:1px solid #ff4757;">
+            <input type="text" id="room-input" placeholder="코드" style="padding:15px; width:100px; text-align:center;">
             <button class="btn-menu" style="display:inline-block; width:100px;" onclick="uiJoinRoom()">입장</button>
         </div>
         <div id="lobby-ui" class="hidden" style="margin-top:20px; text-align:center;">
-            <h2 style="color:#ff9f1a;">방 코드: <span id="code-display">---</span></h2>
+            <h2 style="color:#ff9f1a;">코드: <span id="code-display">---</span></h2>
             <button id="start-btn" class="btn-menu" style="border-color:#2ecc71;" onclick="requestStart()">게임 시작</button>
         </div>
     </div>
@@ -66,26 +58,28 @@
         </div>
         <div id="central-ui">
             <div class="panel">
-                <div style="font-weight:bold; color: #ff9f1a;">DAY <span id="day-val">1</span> | <span id="floor-val">?</span>F</div>
-                <div style="margin: 8px 0;">나의 허기: <span id="hunger-val">100</span> / 100</div>
-                <div style="color:#ff4757;">남은 음식: <span id="food-val">8</span>개</div>
+                <div style="font-weight:bold; color: #ff9f1a; margin-bottom:10px;">DAY <span id="day-val">1</span> | <span id="floor-val">?</span>F</div>
+                <div class="stat-row"><span>HP</span><span id="hp-txt">100</span></div>
+                <div class="hp-bar-bg"><div id="hp-fill" class="hp-bar-fill" style="width: 100%;"></div></div>
+                <div class="stat-row"><span>허기</span><span id="hunger-txt">100</span></div>
+                <div style="font-size:12px; color:#ff4757;">남은 음식: <span id="food-val">8</span>개</div>
             </div>
             <div class="panel">
                 <div id="timer-display">30</div>
-                <div class="btn-eat-group">
-                    <button id="eat1-btn" class="btn-action" onclick="actionEat(1)">1개 먹기</button>
-                    <button id="eat2-btn" class="btn-action" onclick="actionEat(2)">2개 먹기</button>
+                <div style="display:flex; gap:5px;">
+                    <button id="eat1-btn" class="btn-action" style="background:#ff4757; color:white;" onclick="actionEat(1)">1개(+20)</button>
+                    <button id="eat2-btn" class="btn-action" style="background:#c0392b; color:white;" onclick="actionEat(2)">2개(+50)</button>
                 </div>
-                <button id="ride-btn" class="btn-action" onclick="actionRide()">플랫폼 탑승</button>
-                <button id="weapon-btn" class="btn-action" onclick="handleWeapon()">파이프 제작</button>
-                <div id="log-box" style="font-size:11px; color:#888; margin-top:10px; height:50px; overflow:hidden;"></div>
+                <button id="ride-btn" class="btn-action" style="background:#ff9f1a; color:white;" onclick="actionRide()">플랫폼 탑승</button>
+                <button id="weapon-btn" class="btn-action" style="background:#57606f; color:white;" onclick="handleWeapon()">파이프 제작</button>
+                <div id="log-box" style="font-size:11px; color:#888; margin-top:10px; height:50px; overflow:hidden; border-top:1px solid #333;"></div>
             </div>
         </div>
         <div id="chat-panel">
             <div id="chat-messages"></div>
             <div style="padding:10px; display:flex; gap:5px; background:#262626;">
-                <input type="text" id="chat-input" placeholder="메시지..." style="flex:1; background:#000; color:#fff; padding:8px;" onkeypress="if(event.keyCode==13) sendChat()">
-                <button onclick="sendChat()" style="background:#ff4757; border:none; color:#fff; padding:0 15px;">전송</button>
+                <input type="text" id="chat-input" placeholder="메시지..." style="flex:1; background:#000; color:#fff; border:1px solid #444; padding:8px;" onkeypress="if(event.keyCode==13) sendChat()">
+                <button onclick="sendChat()" style="background:#ff4757; border:none; color:#fff; padding:0 10px;">전송</button>
             </div>
         </div>
     </div>
@@ -93,35 +87,14 @@
     <script>
         const socket = io();
         let gameState = { day: 1, foodCount: 8, players: {}, platformLevel: 0 };
-        let myID, roomCode, isRiding = false, turnActionDone = false, weaponStatus = "NOT_MADE", attackUsedThisTurn = false;
-        let isSolo = false;
+        let myID, roomCode, isRiding = false, turnActionDone = false, weaponStatus = "NOT_MADE", attackUsedThisTurn = false, isSolo = false;
 
-        // [혼자하기 로직]
-        function uiSoloStart() {
-            isSolo = true;
-            socket.emit('createRoom', "플레이어(나)");
-        }
-        
-        // 방이 생성되면 혼자하기인 경우 바로 시작
-        socket.on('roomCreated', data => {
-            roomCode = data.roomCode;
-            if(isSolo) {
-                socket.emit('startGame', roomCode);
-            } else {
-                document.getElementById('code-display').innerText = roomCode;
-                document.getElementById('lobby-ui').classList.remove('hidden');
-            }
-        });
-
-        // (이하 기존 로직 동일)
+        function uiSoloStart() { isSolo = true; socket.emit('createRoom', "나"); }
         function uiCreateRoom() { isSolo = false; const n = prompt("닉네임?"); if(n) socket.emit('createRoom', n); }
-        function uiJoinRoom() {
-            isSolo = false;
-            const c = document.getElementById('room-input').value.toUpperCase();
-            const n = prompt("닉네임?"); if(c && n) socket.emit('joinRoom', { roomCode: c, nickname: n });
-        }
+        function uiJoinRoom() { isSolo = false; const c = document.getElementById('room-input').value.toUpperCase(); const n = prompt("닉네임?"); if(c && n) socket.emit('joinRoom', { roomCode: c, nickname: n }); }
         function requestStart() { socket.emit('startGame', roomCode); }
 
+        socket.on('roomCreated', data => { roomCode = data.roomCode; if(isSolo) socket.emit('startGame', roomCode); else { document.getElementById('code-display').innerText = roomCode; document.getElementById('lobby-ui').classList.remove('hidden'); } });
         socket.on('gameStart', data => {
             myID = socket.id; roomCode = data.room.code;
             data.room.players.forEach(p => gameState.players[p.id] = p);
@@ -144,28 +117,32 @@
                 gameState.platformLevel = f;
                 document.getElementById('platform-overlay').style.top = `${(f-1) * 25}%`;
                 const myP = gameState.players[myID];
-                const isMeHere = myP.floor === f || isRiding;
-                if (isMeHere && myP.alive) {
+                if ((myP.floor === f || isRiding) && myP.alive) {
                     if (isRiding) myP.floor = f;
                     render(); updateButtons(f);
-                    await startTimer(15); // 혼자할 땐 턴을 조금 짧게(15초) 조정
+                    await startTimer(20); 
                     disableButtons();
                 } else { await new Promise(r => setTimeout(r, 1200)); }
                 render();
             }
-
-            Object.values(gameState.players).forEach(p => { if (p.alive) { p.hunger -= 25; if (p.hunger <= 0) p.alive = false; }});
             if (gameState.players[myID].alive) {
                 socket.emit('nextDayReady', roomCode);
-                gameState.day++; // 클라이언트에서도 날짜 증가 시각화
-                setTimeout(runDayCycle, 2000);
             } else { alert("사망했습니다."); location.reload(); }
         }
+
+        socket.on('newDayStarted', data => {
+            gameState.day = data.room.day;
+            gameState.foodCount = data.room.foodCount;
+            data.room.players.forEach(p => gameState.players[p.id] = p);
+            addLog(`제 ${gameState.day}일이 시작되었습니다. 허기가 30 소모되었습니다.`);
+            runDayCycle();
+        });
 
         function actionEat(amount) {
             if (turnActionDone || gameState.foodCount < amount) return;
             socket.emit('playerEat', { roomCode, amount });
-            if (amount === 2) { turnActionDone = true; addLog("2개 섭취: 행동 금지!"); }
+            turnActionDone = true; // 3번: 음식 먹으면 해당 층 행동 종료
+            addLog(`음식 ${amount}개를 선택했습니다.`);
             render();
         }
 
@@ -173,15 +150,13 @@
 
         function handleWeapon() {
             if (weaponStatus === "NOT_MADE") {
-                weaponStatus = "READY"; addLog("파이프 제작 완료!");
+                weaponStatus = "READY"; addLog("파이프 제작!");
             } else if (weaponStatus === "READY" && !attackUsedThisTurn && !turnActionDone) {
-                const myP = gameState.players[myID];
-                const target = Object.values(gameState.players).find(p => p.floor === myP.floor && p.id !== myID && p.alive);
+                const target = Object.values(gameState.players).find(p => p.floor === gameState.players[myID].floor && p.id !== myID && p.alive);
                 if (target) {
                     socket.emit('playerAttack', { roomCode, targetID: target.id });
-                    attackUsedThisTurn = true;
-                    addLog(`${target.name} 공격!`);
-                } else { addLog("공격 대상 없음"); }
+                    attackUsedThisTurn = true; addLog(`${target.name} 공격!`);
+                }
             }
             updateButtons(gameState.platformLevel);
         }
@@ -194,26 +169,26 @@
 
         socket.on('syncAttack', data => {
             const vic = gameState.players[data.targetID];
-            if (vic) { vic.hunger = data.newHunger; if (data.isDead) vic.alive = false; }
+            if (vic) { vic.hp = data.newHp; if (data.isDead) vic.alive = false; }
             render();
         });
 
         function render() {
             const myP = gameState.players[myID];
             document.getElementById('day-val').innerText = gameState.day;
-            document.getElementById('hunger-val').innerText = Math.ceil(myP.hunger);
+            document.getElementById('hp-txt').innerText = Math.ceil(myP.hp);
+            document.getElementById('hp-fill').style.width = myP.hp + "%";
+            document.getElementById('hunger-txt').innerText = Math.ceil(myP.hunger);
             document.getElementById('food-val').innerText = gameState.foodCount;
             document.getElementById('floor-val').innerText = myP.floor || "?";
             for(let i=1; i<=4; i++) document.getElementById(`floor-${i}`).innerHTML = `<span class="floor-num">${i}F</span>`;
             Object.values(gameState.players).forEach(p => {
-                if (p.alive && p.floor > 0) {
-                    if (p.floor === myP.floor || p.id === myID) {
-                        const d = document.createElement('div');
-                        d.className = `player ${p.id === myID ? 'you' : ''}`;
-                        d.style.backgroundColor = p.color;
-                        d.innerHTML = `<span style="font-size:9px">${p.name}</span>`;
-                        document.getElementById(`floor-${p.floor}`).appendChild(d);
-                    }
+                if (p.alive && (p.floor === myP.floor || p.id === myID)) {
+                    const d = document.createElement('div');
+                    d.className = `player ${p.id === myID ? 'you' : ''}`;
+                    d.style.backgroundColor = p.color;
+                    d.innerHTML = `<span>${p.name}</span><br><span>HP:${Math.ceil(p.hp)}</span>`;
+                    document.getElementById(`floor-${p.floor}`).appendChild(d);
                 }
             });
         }
@@ -225,8 +200,8 @@
             document.getElementById('eat2-btn').disabled = (!canAct || gameState.foodCount < 2);
             document.getElementById('ride-btn').disabled = (!canAct || f === 4 || isRiding);
             const wBtn = document.getElementById('weapon-btn');
-            if (weaponStatus === "NOT_MADE") { wBtn.innerText = "파이프 제작"; wBtn.disabled = !canAct; }
-            else { wBtn.innerText = attackUsedThisTurn ? "공격 대기" : "파이프 공격"; wBtn.disabled = (!canAct || attackUsedThisTurn); wBtn.classList.add('ready'); }
+            if (weaponStatus === "NOT_MADE") { wBtn.disabled = !canAct; }
+            else { wBtn.innerText = attackUsedThisTurn ? "공격 완료" : "파이프 공격"; wBtn.disabled = (!canAct || attackUsedThisTurn); wBtn.classList.add('ready'); }
         }
 
         function disableButtons() { document.querySelectorAll('.btn-action').forEach(b => b.disabled = true); }

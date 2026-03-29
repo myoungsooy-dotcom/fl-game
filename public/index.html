@@ -2,281 +2,259 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>THE PLATFORM - ULTIMATE EDITION</title>
+    <title>The Platform Royale - Ultimate Multi</title>
     <script src="/socket.io/socket.io.js"></script>
     <style>
-        :root { --red: #ff4757; --orange: #ff9f1a; --green: #2ecc71; --bg: #0a0a0a; --panel: #1a1a1a; }
-        body { background: var(--bg); color: white; font-family: 'Pretendard', sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; overflow: hidden; }
-        
-        /* 암전 효과 */
-        #blackout { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: black; z-index: 200; pointer-events: none; opacity: 0; transition: opacity 0.5s ease; }
+        /* 사용자님 디자인 100% 복구 */
+        body { background-color: #0d0d0d; color: white; font-family: 'Pretendard', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; overflow: hidden; }
+        #blackout { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: black; z-index: 200; pointer-events: none; opacity: 0; transition: opacity 0.4s; }
         #blackout.active { opacity: 1; }
-
-        /* 메뉴 화면 */
-        #menu-screen { position: absolute; width: 100%; height: 100%; background: radial-gradient(circle, #222, #000); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .title { font-size: 4em; color: var(--red); text-shadow: 0 0 20px var(--red); margin-bottom: 40px; font-weight: 900; letter-spacing: 5px; }
-        .btn-menu { width: 280px; padding: 18px; margin: 10px; background: none; color: white; border: 2px solid var(--red); font-weight: bold; cursor: pointer; transition: 0.3s; font-size: 1.1em; }
-        .btn-menu:hover { background: var(--red); box-shadow: 0 0 20px var(--red); transform: scale(1.05); }
-        .input-code { padding: 15px; width: 140px; background: #000; color: #fff; border: 1px solid var(--red); text-align: center; font-size: 1.2em; outline: none; margin-bottom: 10px; }
-
-        /* 대기실 UI */
-        #lobby-ui { border: 1px dashed #555; padding: 30px; border-radius: 15px; background: rgba(0,0,0,0.6); text-align: center; }
-
-        /* 게임 메인 레이아웃 */
-        #game-wrapper { display: flex; gap: 25px; padding: 20px; height: 90vh; max-width: 1300px; width: 100%; justify-content: center; }
+        #menu-screen { position: absolute; width: 100%; height: 100%; background: radial-gradient(circle, #222 0%, #000 100%); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .menu-title { font-size: 4em; color: #ff4757; text-shadow: 0 0 30px #ff4757; margin-bottom: 40px; font-weight: 900; }
+        .btn-menu { display: block; width: 280px; padding: 18px; margin: 12px; background: transparent; color: white; border: 2px solid #ff4757; font-size: 1.3em; cursor: pointer; transition: 0.4s; font-weight: bold; }
+        .btn-menu:hover { background: #ff4757; box-shadow: 0 0 20px #ff4757; transform: scale(1.05); }
         
-        /* 타워 영역 */
-        #tower { border: 8px solid #2f3542; width: 300px; background: #1e1e2e; position: relative; flex-shrink: 0; box-shadow: 0 0 30px rgba(0,0,0,0.5); }
-        .floor { height: 25%; border-bottom: 2px solid #2f3542; position: relative; display: flex; align-items: center; justify-content: center; gap: 10px; }
-        #platform-overlay { width: 100%; height: 25%; background: rgba(255,159,26,0.15); border: 5px solid var(--orange); position: absolute; transition: top 0.7s cubic-bezier(0.4, 0, 0.2, 1); z-index: 5; box-shadow: inset 0 0 20px var(--orange); }
-        
-        .player { width: 55px; height: 55px; border-radius: 50%; border: 3px solid white; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: bold; font-size: 11px; transition: transform 0.3s; z-index: 10; }
-        .player.you { border-color: var(--green); box-shadow: 0 0 15px var(--green); transform: scale(1.1); }
-
-        /* 사이드 패널 */
-        #side-panel { width: 400px; display: flex; flex-direction: column; gap: 15px; }
-        .panel { background: var(--panel); border: 1px solid #333; padding: 20px; border-radius: 12px; }
-        #timer-display { font-size: 4em; color: var(--red); text-align: center; font-weight: 900; margin: 0; line-height: 1; }
-        
-        /* 채팅창 */
-        #chat-box { flex: 1; background: #0a0a0a; border: 1px solid #333; display: flex; flex-direction: column; border-radius: 12px; overflow: hidden; }
-        #messages { flex: 1; padding: 15px; overflow-y: auto; font-size: 14px; color: #ddd; }
-        .msg { margin-bottom: 8px; border-left: 3px solid var(--red); padding-left: 10px; line-height: 1.4; }
-        .chat-input-area { display: flex; padding: 10px; background: #1a1a1a; border-top: 1px solid #333; }
-        .chat-input-area input { flex: 1; background: #000; color: #fff; border: 1px solid #444; padding: 10px; border-radius: 5px; outline: none; }
-
+        #game-wrapper { display: flex; gap: 20px; padding: 20px; max-width: 1200px; height: 85vh; }
         .hidden { display: none !important; }
-        .btn-action { width: 100%; padding: 15px; margin-top: 10px; font-weight: bold; border: 2px solid #444; background: none; color: white; cursor: pointer; transition: 0.2s; border-radius: 8px; font-size: 1em; }
-        .btn-action:hover:not(:disabled) { background: rgba(255,255,255,0.1); border-color: white; }
-        .btn-action:disabled { opacity: 0.3; cursor: not-allowed; }
+        #tower { border: 6px solid #2f3542; width: 280px; background: #1e1e2e; position: relative; flex-shrink: 0; }
+        .floor { height: 25%; border-bottom: 2px solid #2f3542; position: relative; display: flex; align-items: center; justify-content: center; gap: 5px; }
+        .floor-num { position: absolute; left: 10px; top: 10px; color: #57606f; font-weight: bold; }
+        
+        #platform-overlay { width: 100%; height: 25%; background: rgba(255, 159, 26, 0.2); border: 4px solid #ff9f1a; position: absolute; top: -100%; left: 0; transition: top 0.6s cubic-bezier(0.2, 0.8, 0.2, 1); box-shadow: 0 0 25px #ff9f1a; z-index: 5; }
+        
+        .player { width: 50px; height: 50px; border-radius: 50%; border: 3px solid white; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: bold; transition: transform 0.2s; }
+        .player.you { border-color: #2ecc71; box-shadow: 0 0 15px #2ecc71; z-index: 10; }
+        
+        #central-ui { width: 320px; display: flex; flex-direction: column; gap: 15px; }
+        .panel { background: #1a1a1a; border: 1px solid #333; padding: 15px; border-radius: 10px; }
+        #timer-display { font-size: 3.5em; color: #ff4757; text-align: center; font-weight: 900; }
+        .btn-action { width: 100%; padding: 12px; margin-top: 8px; font-weight: bold; border: none; border-radius: 5px; cursor: pointer; }
+        #eat-btn { background: #ff4757; color: white; }
+        #ride-btn { background: #ff9f1a; color: white; }
+        #weapon-btn { background: #57606f; color: white; border: 1px solid #888; }
+        #weapon-btn.ready { background: #747d8c; border-color: #f1f2f6; box-shadow: 0 0 10px #fff; }
+        button:disabled { background: #333 !important; color: #666 !important; cursor: not-allowed; box-shadow: none !important; }
+
+        #chat-panel { width: 350px; background: #1a1a1a; border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; }
+        .chat-tabs { display: flex; background: #2f3542; }
+        .tab { flex: 1; padding: 10px; border: none; background: #3d4451; color: #999; cursor: pointer; font-size: 12px; }
+        .tab.active { background: #ff4757; color: white; font-weight: bold; }
+        #chat-messages { flex: 1; height: 350px; overflow-y: auto; font-size: 13px; padding: 10px; background: #000; }
+        .msg { margin-bottom: 8px; line-height: 1.4; padding: 5px; border-radius: 4px; background: #1a1a1a; }
+        .msg.global { border-left: 3px solid #ff4757; }
+        .msg.floor { border-left: 3px solid #70a1ff; }
     </style>
 </head>
 <body>
     <div id="blackout"></div>
 
     <div id="menu-screen">
-        <h1 class="title">THE PLATFORM</h1>
-        <div id="menu-main">
-            <button class="btn-menu" onclick="startSingleGame()">혼자 하기 (AI)</button><br>
-            <button class="btn-menu" onclick="uiCreateRoom()">방 만들기 (Create)</button><br>
-            <div style="margin-top:15px;">
-                <input type="text" id="room-input" placeholder="CODE" class="input-code">
-                <button class="btn-menu" style="width:110px; padding:15px;" onclick="uiJoinRoom()">입장</button>
-            </div>
+        <h1 class="menu-title">THE PLATFORM</h1>
+        <button class="btn-menu" onclick="startSingleGame()">혼자 하기 (AI)</button>
+        <div style="margin-top:20px;">
+            <button class="btn-menu" onclick="uiCreateRoom()">방 만들기</button>
+            <input type="text" id="room-input" placeholder="코드 입력" style="padding:15px; width:120px; text-align:center;">
+            <button class="btn-menu" style="display:inline-block; width:100px;" onclick="uiJoinRoom()">입장</button>
         </div>
-
-        <div id="lobby-ui" class="hidden">
-            <h2 style="color:var(--orange); font-size:2em; margin:0;">방 코드: <span id="display-code">----</span></h2>
-            <p id="player-count" style="font-size:1.2em; margin:20px 0;">참여 대기: 0/4</p>
-            <button id="start-btn" class="btn-menu" style="border-color:var(--green); color:var(--green);" onclick="requestStart()">게임 시작하기</button>
-            <p id="wait-msg" class="hidden" style="color:#777;">방장이 게임을 시작하기를 기다리고 있습니다...</p>
+        <div id="lobby-ui" class="hidden" style="margin-top:20px; text-align:center;">
+            <h2 style="color:#ff9f1a;">방 코드: <span id="code-display">---</span></h2>
+            <p id="p-count">참여 인원: 0/4</p>
+            <button id="start-btn" class="btn-menu" style="border-color:#2ecc71;" onclick="requestStart()">게임 시작</button>
         </div>
     </div>
 
     <div id="game-wrapper" class="hidden">
         <div id="tower">
             <div id="platform-overlay"></div>
-            <div class="floor" id="floor-1"></div>
-            <div class="floor" id="floor-2"></div>
-            <div class="floor" id="floor-3"></div>
-            <div class="floor" id="floor-4"></div>
+            <div class="floor" id="floor-1"><span class="floor-num">1F</span></div>
+            <div class="floor" id="floor-2"><span class="floor-num">2F</span></div>
+            <div class="floor" id="floor-3"><span class="floor-num">3F</span></div>
+            <div class="floor" id="floor-4"><span class="floor-num">4F</span></div>
         </div>
 
-        <div id="side-panel">
+        <div id="central-ui">
+            <div class="panel">
+                <div style="font-weight:bold; color: #ff9f1a;">DAY <span id="day-val">1</span> | <span id="floor-val">?</span>F</div>
+                <div style="margin: 8px 0;">나의 허기: <span id="hunger-val">100</span> / 100</div>
+                <div>음식 잔량: <span id="food-val">120</span></div>
+            </div>
             <div class="panel">
                 <div id="timer-display">30</div>
-                <div style="display:flex; justify-content: space-between; font-size:1.2em; font-weight:bold; margin: 10px 0;">
-                    <span>DAY <span id="day-val">1</span></span>
-                    <span style="color:var(--orange);"><span id="floor-val">?</span>F</span>
-                </div>
-                <div style="background:#000; padding:10px; border-radius:5px; margin-bottom:10px;">
-                    <div>나의 허기: <span id="hunger-val" style="color:var(--green)">100</span> / 100</div>
-                    <div>남은 음식: <span id="food-val" style="color:var(--red)">120</span></div>
-                </div>
-                <button id="eat-btn" class="btn-action" style="border-color:var(--red);" onclick="actionEat()">음식 먹기 (Eat)</button>
-                <button id="ride-btn" class="btn-action" style="border-color:var(--orange);" onclick="actionRide()">플랫폼 탑승 (Ride)</button>
-                <button id="weapon-btn" class="btn-action" onclick="handleWeapon()">파이프 제작 (Craft)</button>
-                <div id="log-box" style="margin-top:15px; font-size:12px; color:#888; height:40px; overflow:hidden; border-top:1px solid #333; padding-top:10px;"></div>
+                <button id="eat-btn" class="btn-action" onclick="actionEat()" disabled>음식 먹기</button>
+                <button id="ride-btn" class="btn-action" onclick="actionRide()" disabled>플랫폼 탑승 (하강)</button>
+                <button id="weapon-btn" class="btn-action" onclick="handleWeapon()" disabled>파이프 제작 (1회)</button>
+                <div id="log-box" style="font-size:11px; color:#888; margin-top:10px; height:45px; overflow:hidden;"></div>
             </div>
+        </div>
 
-            <div id="chat-box">
-                <div id="messages"></div>
-                <div class="chat-input-area">
-                    <input type="text" id="chat-input" placeholder="메시지를 입력하세요..." onkeypress="if(event.keyCode==13) sendChat()">
-                    <button onclick="sendChat()" style="background:var(--red); border:none; color:white; padding:0 15px; cursor:pointer; font-weight:bold; margin-left:5px; border-radius:5px;">전송</button>
-                </div>
+        <div id="chat-panel">
+            <div class="chat-tabs">
+                <button id="tab-global" class="tab active" onclick="setChatMode('global')">전체 채널</button>
+                <button id="tab-floor" class="tab" onclick="setChatMode('floor')">현재 층 채널</button>
+            </div>
+            <div id="chat-messages"></div>
+            <div style="padding:10px; display:flex; gap:5px; background:#262626;">
+                <input type="text" id="chat-input" placeholder="메시지 입력..." style="flex:1; background:#000; color:#fff; border:1px solid #444; padding:8px;" onkeypress="if(event.keyCode==13) sendChat()">
+                <button onclick="sendChat()" style="background:#ff4757; border:none; color:#fff; padding:0 15px; cursor:pointer;">전송</button>
             </div>
         </div>
     </div>
 
     <script>
         const socket = io();
-        let gameState = { day: 1, food: 120, players: {}, platformLevel: 0, isGameOver: false };
-        let myID, isMulti = false, currentRoomCode = null, isRiding = false, hasEaten = false, weaponStatus = "NOT_MADE";
+        let gameState = { day: 1, food: 120, players: {}, platformLevel: 0, currentChat: 'global', isGameOver: false };
+        let myID, isMulti = false, roomCode = null, isRiding = false, hasEaten = false, weaponStatus = "NOT_MADE";
 
         // [방 시스템]
-        function uiCreateRoom() { const n = prompt("닉네임을 입력하세요"); if(n) socket.emit('createRoom', n); }
-        function uiJoinRoom() { 
+        function uiCreateRoom() { const n = prompt("닉네임?"); if(n) socket.emit('createRoom', n); }
+        function uiJoinRoom() {
             const c = document.getElementById('room-input').value.toUpperCase();
-            const n = prompt("닉네임을 입력하세요"); if(c && n) socket.emit('joinRoom', { roomCode: c, nickname: n });
+            const n = prompt("닉네임?"); if(c && n) socket.emit('joinRoom', { roomCode: c, nickname: n });
         }
-        function requestStart() { if(currentRoomCode) socket.emit('startGame', currentRoomCode); }
+        function requestStart() { socket.emit('startGame', roomCode); }
 
         socket.on('roomCreated', (data) => {
-            currentRoomCode = data.roomCode;
-            document.getElementById('menu-main').classList.add('hidden');
+            roomCode = data.roomCode;
+            document.getElementById('code-display').innerText = roomCode;
+            document.getElementById('p-count').innerText = `참여 인원: ${data.players.length}/4`;
             document.getElementById('lobby-ui').classList.remove('hidden');
-            document.getElementById('display-code').innerText = currentRoomCode;
-            document.getElementById('player-count').innerText = `참여 대기: ${data.players.length}/4`;
         });
 
         socket.on('playerJoined', (data) => {
-            document.getElementById('player-count').innerText = `참여 대기: ${data.players.length}/4`;
-            if(socket.id !== gameState.players[Object.keys(gameState.players)[0]]) {
-                document.getElementById('start-btn').classList.add('hidden');
-                document.getElementById('wait-msg').classList.remove('hidden');
-            }
+            document.getElementById('p-count').innerText = `참여 인원: ${data.players.length}/4`;
         });
 
         socket.on('gameStart', (data) => {
-            isMulti = true; myID = socket.id; currentRoomCode = data.room.code;
+            isMulti = true; myID = socket.id; roomCode = data.room.code;
             data.room.players.forEach(p => { gameState.players[p.id] = p; });
             document.getElementById('menu-screen').classList.add('hidden');
             document.getElementById('game-wrapper').classList.remove('hidden');
             runDayCycle();
         });
 
-        // [싱글 플레이 모드]
+        // [싱글 플레이]
         function startSingleGame() {
             isMulti = false; myID = "me";
-            gameState.players = { "me": { id:"me", name:"나", hunger:100, floor:0, alive:true, color:"var(--green)" } };
-            for(let i=1; i<=3; i++) gameState.players[`ai${i}`] = { id:`ai${i}`, name:`AI ${i}`, hunger:100, floor:0, alive:true, color:"#666", isAI:true };
+            gameState.players = { "me": { id:"me", name:"나", hunger:100, floor:0, alive:true, color:"#2ecc71" } };
+            for(let i=1; i<=3; i++) gameState.players[`ai${i}`] = { id:`ai${i}`, name:`AI P${i+1}`, hunger:100, floor:0, alive:true, color:"#666", isAI:true };
             document.getElementById('menu-screen').classList.add('hidden');
             document.getElementById('game-wrapper').classList.remove('hidden');
             runDayCycle();
         }
 
-        // [게임 사이클]
         async function runDayCycle() {
-            if(gameState.isGameOver) return;
+            if (gameState.isGameOver) return;
             document.getElementById('blackout').classList.add('active');
             
-            // 층 랜덤 배정
-            const floors = [1,2,3,4].sort(()=>Math.random()-0.5);
-            Object.values(gameState.players).forEach((p,i) => { if(p.alive) p.floor = floors[i%4]; });
-            isRiding = false; render();
+            const alivePlayers = Object.keys(gameState.players).filter(id => gameState.players[id].alive);
+            const floors = [1, 2, 3, 4].sort(() => Math.random() - 0.5);
+            alivePlayers.forEach((id, idx) => { gameState.players[id].floor = floors[idx % 4]; });
             
+            isRiding = false; hasEaten = false; // 식사 상태 초기화
+            render();
+
             await new Promise(r => setTimeout(r, 600));
             document.getElementById('blackout').classList.remove('active');
 
-            for(let f=1; f<=4; f++) {
+            for (let f = 1; f <= 4; f++) {
                 gameState.platformLevel = f;
-                document.getElementById('platform-overlay').style.top = `${(f-1)*25}%`;
-                hasEaten = false;
+                document.getElementById('platform-overlay').style.top = `${(f-1) * 25}%`;
                 
-                if(gameState.players[myID].floor === f || isRiding) {
-                    if(isRiding) gameState.players[myID].floor = f;
+                const isMeHere = gameState.players[myID].floor === f || isRiding;
+                if (isMeHere && gameState.players[myID].alive) {
+                    if (isRiding) gameState.players[myID].floor = f;
                     render(); updateButtons(f);
-                    await startTimer(30);
+                    await startTimer(20); // 멀티플레이 속도감을 위해 20초로 조정
                     disableButtons();
                 } else {
-                    if(!isMulti) { // AI 동작 시뮬레이션
+                    if(!isMulti) { // AI 행동
                         Object.values(gameState.players).filter(p => p.floor === f && p.isAI && p.alive).forEach(ai => {
-                            let eatAmt = Math.min(gameState.food, 40); gameState.food -= eatAmt;
-                            ai.hunger = Math.min(100, ai.hunger + (eatAmt * 1.3));
+                            let eat = Math.min(gameState.food, 30); gameState.food -= eat;
+                            ai.hunger = Math.min(100, ai.hunger + (eat * 1.1));
                         });
                     }
-                    await new Promise(r => setTimeout(r, 1500)); 
+                    await new Promise(r => setTimeout(r, 1200));
                 }
+                render();
             }
-            
-            // 하루 종료 정산
-            Object.values(gameState.players).forEach(p => { 
-                if(p.alive) { p.hunger -= 25; if(p.hunger <= 0) { p.hunger = 0; p.alive = false; addLog(`${p.name}님이 아사했습니다.`); } }
+
+            // 정산
+            Object.values(gameState.players).forEach(p => {
+                if (p.alive) {
+                    p.hunger -= 25;
+                    if (p.hunger <= 0) { p.hunger = 0; p.alive = false; addLog(`${p.name} 사망.`); }
+                }
             });
             
-            if(gameState.players[myID].alive) { 
-                gameState.day++; gameState.food = 120; 
-                addLog(`DAY ${gameState.day}가 시작되었습니다.`);
-                setTimeout(runDayCycle, 1500); 
+            if (gameState.players[myID].alive) {
+                gameState.day++;
+                if(isMulti) socket.emit('nextDayReady', roomCode);
+                else gameState.food = 120;
+                setTimeout(runDayCycle, 1500);
             } else {
-                alert("당신은 굶주림을 이기지 못하고 사망했습니다...");
-                location.reload();
+                alert("사망하셨습니다."); location.reload();
             }
         }
 
-        // [기능 함수들]
+        // [액션]
         function actionEat() {
-            if(hasEaten || gameState.food <= 0) return;
-            hasEaten = true;
-            if(isMulti) {
-                socket.emit('playerEat', { roomCode: currentRoomCode });
+            if (hasEaten || gameState.food <= 0) return;
+            if (isMulti) {
+                socket.emit('playerEat', { roomCode });
             } else {
+                hasEaten = true;
                 gameState.food -= 40;
                 gameState.players[myID].hunger = Math.min(100, gameState.players[myID].hunger + 55);
                 render();
             }
-            updateButtons(gameState.platformLevel);
+            document.getElementById('eat-btn').disabled = true;
         }
 
-        function actionRide() { isRiding = true; document.getElementById('ride-btn').disabled = true; addLog("플랫폼에 탑승했습니다."); }
+        function actionRide() { isRiding = true; document.getElementById('ride-btn').disabled = true; render(); }
 
         function handleWeapon() {
-            if(weaponStatus === "NOT_MADE") {
-                weaponStatus = "READY"; addLog("파이프 무기를 제작했습니다!");
-            } else if(weaponStatus === "READY") {
+            if (weaponStatus === "NOT_MADE") {
+                weaponStatus = "READY";
+                addLog("무기 준비 완료.");
+                updateButtons(gameState.platformLevel);
+            } else if (weaponStatus === "READY") {
                 const target = Object.values(gameState.players).find(p => p.floor === gameState.players[myID].floor && p.id !== myID && p.alive);
-                if(target) {
-                    if(isMulti) socket.emit('playerAttack', { roomCode: currentRoomCode, targetID: target.id });
-                    else { target.hunger -= 30; if(target.hunger < 0) target.alive = false; render(); }
-                    weaponStatus = "USED"; addLog(`${target.name}님을 공격했습니다!`);
-                } else {
-                    alert("공격할 대상이 같은 층에 없습니다!");
+                if (target) {
+                    if (isMulti) socket.emit('playerAttack', { roomCode, targetID: target.id });
+                    else { target.hunger = Math.max(0, target.hunger - 30); if(target.hunger<=0) target.alive=false; render(); }
+                    weaponStatus = "USED";
+                    addLog(`${target.name} 공격 성공!`);
+                    updateButtons(gameState.platformLevel);
                 }
             }
-            updateButtons(gameState.platformLevel);
         }
 
-        function sendChat() {
-            const input = document.getElementById('chat-input');
-            if(!input.value) return;
-            if(isMulti) {
-                socket.emit('sendMsg', { roomCode: currentRoomCode, sender: gameState.players[myID].name, msg: input.value });
-            } else {
-                addChatMessage("나", input.value);
-            }
-            input.value = "";
-        }
-
-        // [통신 수신 처리]
+        // [동기화]
         socket.on('syncEat', (data) => {
             gameState.food = data.newFood;
-            if(gameState.players[data.eaterID]) {
-                gameState.players[data.eaterID].hunger = Math.min(100, gameState.players[data.eaterID].hunger + 55);
-            }
+            if (data.eaterID === myID) hasEaten = true; // 본인이 먹었을 때 상태 확정
+            if (gameState.players[data.eaterID]) gameState.players[data.eaterID].hunger = Math.min(100, gameState.players[data.eaterID].hunger + 55);
             render();
         });
 
         socket.on('syncAttack', (data) => {
-            const victim = gameState.players[data.targetID];
-            if(victim) {
-                victim.hunger -= 30; if(victim.hunger < 0) victim.alive = false;
-                addLog(`${victim.name}님이 공격받았습니다!`);
-                render();
-            }
+            const vic = gameState.players[data.targetID];
+            if (vic) { vic.hunger = Math.max(0, vic.hunger - 30); if(vic.hunger<=0) vic.alive=false; render(); }
         });
 
-        socket.on('receiveMsg', (data) => { addChatMessage(data.sender, data.msg); });
-        socket.on('joinError', (msg) => { alert(msg); });
+        socket.on('receiveMsg', (data) => {
+            const type = (data.floor === gameState.players[myID].floor) ? 'floor' : 'global';
+            if (gameState.currentChat === 'global' || type === 'floor') addChatMessage(data.sender, data.msg, type);
+        });
 
         // [유틸리티]
         function startTimer(sec) {
-            return new Promise(resolve => {
+            return new Promise(res => {
                 let timeLeft = sec;
                 const display = document.getElementById('timer-display');
-                const interval = setInterval(() => {
+                const itv = setInterval(() => {
                     display.innerText = timeLeft;
-                    if(timeLeft-- <= 0) { clearInterval(interval); resolve(); }
+                    if (timeLeft-- <= 0) { clearInterval(itv); res(); }
                 }, 1000);
             });
         }
@@ -286,37 +264,61 @@
             document.getElementById('hunger-val').innerText = Math.ceil(gameState.players[myID].hunger);
             document.getElementById('food-val').innerText = gameState.food;
             document.getElementById('floor-val').innerText = gameState.players[myID].floor || "?";
-            
-            for(let i=1; i<=4; i++) document.getElementById(`floor-${i}`).innerHTML = `<span style="position:absolute;left:8px;top:8px;color:#333;font-size:12px;font-weight:bold;">${i}F</span>`;
-            
+            for(let i=1; i<=4; i++) {
+                const fDiv = document.getElementById(`floor-${i}`);
+                fDiv.innerHTML = `<span class="floor-num">${i}F</span>`;
+            }
             Object.values(gameState.players).forEach(p => {
-                if(p.alive && p.floor > 0) {
-                    const pDiv = document.createElement('div');
-                    pDiv.className = `player ${p.id === myID ? 'you' : ''}`;
-                    pDiv.style.backgroundColor = p.color;
-                    pDiv.innerHTML = `<span>${p.name}</span><span style="font-size:14px;">${Math.ceil(p.hunger)}</span>`;
-                    document.getElementById(`floor-${p.floor}`).appendChild(pDiv);
+                if (p.alive && p.floor > 0) {
+                    const d = document.createElement('div');
+                    d.className = `player ${p.id === myID ? 'you' : ''}`;
+                    d.style.backgroundColor = p.color;
+                    d.innerHTML = `<span style="font-size:9px">${p.name}</span><span style="font-size:8px">H:${Math.ceil(p.hunger)}</span>`;
+                    document.getElementById(`floor-${p.floor}`).appendChild(d);
                 }
             });
         }
 
         function updateButtons(f) {
-            document.getElementById('eat-btn').disabled = (hasEaten || gameState.food <= 0);
+            document.getElementById('eat-btn').disabled = (hasEaten || gameState.food < 40);
             document.getElementById('ride-btn').disabled = (f === 4 || isRiding);
             const wBtn = document.getElementById('weapon-btn');
-            if(weaponStatus === "NOT_MADE") { wBtn.innerText = "파이프 제작 (Craft)"; wBtn.disabled = false; }
-            else if(weaponStatus === "READY") { wBtn.innerText = "파이프 사용 (Attack)"; wBtn.style.borderColor = "var(--red)"; }
-            else { wBtn.innerText = "무기 소진"; wBtn.disabled = true; wBtn.style.borderColor = "#333"; }
+            if (weaponStatus === "NOT_MADE") { wBtn.disabled = false; wBtn.innerText = "파이프 제작"; }
+            else if (weaponStatus === "READY") {
+                const others = Object.values(gameState.players).filter(p => p.floor === f && p.id !== myID && p.alive);
+                wBtn.disabled = (others.length === 0);
+                wBtn.innerText = "파이프 사용"; wBtn.classList.add('ready');
+            } else { wBtn.disabled = true; wBtn.innerText = "사용 완료"; }
         }
 
         function disableButtons() {
-            document.querySelectorAll('.btn-action').forEach(b => b.disabled = true);
+            document.getElementById('eat-btn').disabled = true;
+            document.getElementById('ride-btn').disabled = true;
+            document.getElementById('weapon-btn').disabled = true;
         }
 
-        function addChatMessage(sender, msg) {
-            const container = document.getElementById('messages');
-            container.innerHTML += `<div class="msg"><strong>${sender}:</strong> ${msg}</div>`;
-            container.scrollTop = container.scrollHeight;
+        function sendChat() {
+            const input = document.getElementById('chat-input');
+            if (!input.value) return;
+            const data = { roomCode, sender: gameState.players[myID].name, msg: input.value, floor: gameState.players[myID].floor };
+            if (isMulti) socket.emit('sendMsg', data);
+            else addChatMessage("나", input.value, gameState.currentChat);
+            input.value = "";
+        }
+
+        function addChatMessage(sender, msg, type) {
+            const box = document.getElementById('chat-messages');
+            const d = document.createElement('div');
+            d.className = `msg ${type}`;
+            d.innerHTML = `<small>[${type==='global'?'전체':'층'}]</small> <strong>${sender}:</strong> ${msg}`;
+            box.appendChild(d);
+            box.scrollTop = box.scrollHeight;
+        }
+
+        function setChatMode(m) {
+            gameState.currentChat = m;
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.getElementById(`tab-${m}`).classList.add('active');
         }
 
         function addLog(m) {

@@ -2,10 +2,10 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>The Platform Royale - Ultimate Edition</title>
+    <title>The Platform Royale - Evolution</title>
     <script src="/socket.io/socket.io.js"></script>
     <style>
-        /* 기존 디자인 시스템 유지 */
+        /* 디자인 시스템 */
         body { background-color: #0d0d0d; color: white; font-family: 'Pretendard', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; overflow: hidden; }
         #blackout { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: black; z-index: 200; pointer-events: none; opacity: 0; transition: opacity 0.6s; }
         #blackout.active { opacity: 1; }
@@ -13,24 +13,33 @@
         .menu-title { font-size: 4em; color: #ff4757; text-shadow: 0 0 30px #ff4757; margin-bottom: 40px; font-weight: 900; }
         .btn-menu { display: block; width: 280px; padding: 18px; margin: 12px; background: transparent; color: white; border: 2px solid #ff4757; font-size: 1.3em; cursor: pointer; transition: 0.4s; font-weight: bold; }
         .btn-menu:hover { background: #ff4757; box-shadow: 0 0 20px #ff4757; transform: scale(1.05); }
-        .btn-sub { border-color: #57606f; color: #57606f; font-size: 1em; width: 200px; }
+        
         #game-wrapper { display: flex; gap: 20px; padding: 20px; max-width: 1200px; height: 85vh; }
         .hidden { display: none !important; }
         #tower { border: 6px solid #2f3542; width: 280px; background: #1e1e2e; position: relative; flex-shrink: 0; }
-        .floor { height: 25%; border-bottom: 2px solid #2f3542; position: relative; display: flex; align-items: center; justify-content: center; }
+        .floor { height: 25%; border-bottom: 2px solid #2f3542; position: relative; display: flex; align-items: center; justify-content: center; gap: 5px; }
         .floor-num { position: absolute; left: 10px; top: 10px; color: #57606f; font-weight: bold; }
-        #platform-overlay { width: 100%; height: 25%; background: rgba(255, 159, 26, 0.1); border: 4px solid #ff9f1a; position: absolute; top: -100%; left: 0; transition: top 1s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 0 25px #ff9f1a; z-index: 5; }
-        .player { width: 65px; height: 65px; border-radius: 50%; border: 3px solid white; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: bold; z-index: 10; }
-        .player.you { border-color: #2ecc71; box-shadow: 0 0 15px #2ecc71; }
-        .player-stats { font-size: 10px; margin-top: 2px; }
-        #central-ui { width: 300px; display: flex; flex-direction: column; gap: 15px; }
+        #platform-overlay { width: 100%; height: 25%; background: rgba(255, 159, 26, 0.2); border: 4px solid #ff9f1a; position: absolute; top: -100%; left: 0; transition: top 1.5s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 0 25px #ff9f1a; z-index: 5; }
+        .player { width: 50px; height: 50px; border-radius: 50%; border: 3px solid white; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: bold; transition: transform 0.3s; }
+        .player.you { border-color: #2ecc71; box-shadow: 0 0 15px #2ecc71; z-index: 10; }
+        
+        #central-ui { width: 320px; display: flex; flex-direction: column; gap: 15px; }
         .panel { background: #1a1a1a; border: 1px solid #333; padding: 15px; border-radius: 10px; }
-        #timer-display { font-size: 3em; color: #ff4757; text-align: center; font-weight: 900; }
-        #action-btn { width: 100%; padding: 18px; font-size: 1.1em; font-weight: bold; background: #ff4757; color: white; border: none; cursor: pointer; border-radius: 5px; }
-        #action-btn:disabled { background: #333; color: #666; cursor: not-allowed; }
-        #chat-panel { width: 350px; background: #1a1a1a; border: 1px solid #333; border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; }
-        #chat-messages { flex: 1; padding: 15px; overflow-y: auto; font-size: 13px; }
-        .msg { padding: 6px 10px; border-radius: 5px; background: #262626; margin-bottom: 8px; }
+        #timer-display { font-size: 3.5em; color: #ff4757; text-align: center; font-weight: 900; }
+        .btn-action { width: 100%; padding: 12px; margin-top: 8px; font-weight: bold; border: none; border-radius: 5px; cursor: pointer; }
+        #eat-btn { background: #ff4757; color: white; }
+        #ride-btn { background: #ff9f1a; color: white; }
+        button:disabled { background: #333 !important; color: #666 !important; cursor: not-allowed; }
+
+        /* 채팅 시스템 수정 */
+        #chat-panel { width: 350px; background: #1a1a1a; border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; }
+        .chat-tabs { display: flex; background: #2f3542; }
+        .tab { flex: 1; padding: 10px; border: none; background: #3d4451; color: #999; cursor: pointer; font-size: 12px; }
+        .tab.active { background: #ff4757; color: white; font-weight: bold; }
+        #chat-messages { flex: 1; height: 350px; overflow-y: auto; font-size: 13px; padding: 10px; background: #000; }
+        .msg { margin-bottom: 8px; line-height: 1.4; padding: 5px; border-radius: 4px; background: #1a1a1a; }
+        .msg.global { border-left: 3px solid #ff4757; }
+        .msg.floor { border-left: 3px solid #70a1ff; }
     </style>
 </head>
 <body>
@@ -38,23 +47,8 @@
 
     <div id="menu-screen">
         <h1 class="menu-title">THE PLATFORM</h1>
-        <div id="main-btns">
-            <button class="btn-menu" onclick="startSinglePlayer()">혼자 하기 (AI 대전)</button>
-            <button class="btn-menu" onclick="showMultiMenu()">함께 하기 (멀티플레이)</button>
-        </div>
-        <div id="multi-btns" class="hidden">
-            <button class="btn-menu" onclick="createRoom()">구역 만들기</button>
-            <button class="btn-menu" onclick="showJoinInput()">구역 참가하기</button>
-            <button class="btn-menu btn-sub" onclick="backToMain()">뒤로 가기</button>
-        </div>
-        <div id="join-input" class="hidden">
-            <input type="text" id="room-code-input" placeholder="코드 입력" style="padding:15px; font-size:1.5em; text-align:center; width:250px; background:#000; color:#fff; border:1px solid #ff4757;">
-            <button class="btn-menu" onclick="joinRoom()">접속</button>
-        </div>
-        <div id="lobby-wait" class="hidden">
-            <h2 id="display-code">CODE: ----</h2>
-            <button class="btn-menu" id="start-btn" onclick="sendStartSignal()" style="border-color: #2ecc71;">게임 시작</button>
-        </div>
+        <button class="btn-menu" onclick="startGame('single')">혼자 하기 (AI)</button>
+        <button class="btn-menu" onclick="alert('멀티플레이어는 서버 배포 후 구역 코드로 작동합니다.')">함께 하기 (준비중)</button>
     </div>
 
     <div id="game-wrapper" class="hidden">
@@ -65,72 +59,57 @@
             <div class="floor" id="floor-3"><span class="floor-num">3F</span></div>
             <div class="floor" id="floor-4"><span class="floor-num">4F</span></div>
         </div>
+
         <div id="central-ui">
             <div class="panel">
-                <div style="font-weight:bold; color: #ff9f1a;">DAY <span id="day-val">1</span> | <span id="mode-text">MODE</span></div>
-                <div style="margin: 8px 0;">나의 허기: <span id="hunger-val">100</span></div>
-                <div>플랫폼 음식: <span id="food-val">0</span></div>
+                <div style="font-weight:bold; color: #ff9f1a;">DAY <span id="day-val">1</span> | <span id="floor-val">?</span>F</div>
+                <div style="margin: 8px 0;">허기: <span id="hunger-val">100</span> / 100</div>
+                <div>음식 잔량: <span id="food-val">120</span></div>
             </div>
             <div class="panel">
-                <div id="timer-display">WAIT</div>
-                <button id="action-btn" onclick="handleEat()" disabled>음식 먹기</button>
-                <div id="system-log" style="font-size:12px; color:#888; margin-top:10px; height:80px; overflow:hidden;"></div>
+                <div id="timer-display">READY</div>
+                <button id="eat-btn" class="btn-action" onclick="actionEat()" disabled>음식 먹기</button>
+                <button id="ride-btn" class="btn-action" onclick="actionRide()" disabled>플랫폼 탑승 (하강)</button>
+                <div id="log-box" style="font-size:11px; color:#888; margin-top:10px; height:50px; overflow:hidden;"></div>
             </div>
         </div>
+
         <div id="chat-panel">
-            <div style="background:#2f3542; padding:10px; font-size:12px; font-weight:bold;">통신 장치</div>
+            <div class="chat-tabs">
+                <button id="tab-global" class="tab active" onclick="setChatMode('global')">전체 채널</button>
+                <button id="tab-floor" class="tab" onclick="setChatMode('floor')">현재 층 채널</button>
+            </div>
             <div id="chat-messages"></div>
             <div style="padding:10px; display:flex; gap:5px; background:#262626;">
-                <input type="text" id="chat-input" placeholder="메시지..." style="flex:1; background:#000; color:#fff; border:1px solid #444; padding:5px;">
-                <button onclick="sendMessage()" style="background:#ff4757; border:none; color:#fff; cursor:pointer;">전송</button>
+                <input type="text" id="chat-input" placeholder="메시지 입력..." style="flex:1; background:#000; color:#fff; border:1px solid #444; padding:8px;" onkeypress="if(event.keyCode==13) sendChat()">
+                <button onclick="sendChat()" style="background:#ff4757; border:none; color:#fff; padding:0 15px; cursor:pointer;">전송</button>
             </div>
         </div>
     </div>
 
     <script>
-        const socket = io();
-        let isMulti = false;
-        let myRoomCode = "";
-        let myId = "local-player";
-        let gameState = { day: 1, food: 120, players: {}, platformLevel: 0 };
-        let hasEaten = false;
+        let gameState = { day: 1, food: 120, players: {}, platformLevel: 0, currentChat: 'global' };
+        let isRiding = false;
+        let timerRunning = false;
 
-        /* --- 메뉴 로직 --- */
-        function showMultiMenu() {
-            document.getElementById('main-btns').classList.add('hidden');
-            document.getElementById('multi-btns').classList.remove('hidden');
-        }
-        function backToMain() {
-            document.getElementById('multi-btns').classList.add('hidden');
-            document.getElementById('main-btns').classList.remove('hidden');
-        }
-        function showJoinInput() {
-            document.getElementById('multi-btns').classList.add('hidden');
-            document.getElementById('join-input').classList.remove('hidden');
-        }
-
-        /* --- 싱글 플레이 (AI 모드) 로직 --- */
-        function startSinglePlayer() {
-            isMulti = false;
+        function startGame(m) {
             document.getElementById('menu-screen').classList.add('hidden');
             document.getElementById('game-wrapper').classList.remove('hidden');
-            document.getElementById('mode-text').innerText = "SINGLE (AI)";
             
-            // AI 플레이어 생성
             gameState.players = {
-                "local-player": { id: "local-player", name: "나", hunger: 100, floor: 0, alive: true, color: "#2ecc71", isAI: false },
-                "ai-1": { id: "ai-1", name: "AI P2", hunger: 100, floor: 0, alive: true, color: "#3498db", isAI: true },
-                "ai-2": { id: "ai-2", name: "AI P3", hunger: 100, floor: 0, alive: true, color: "#9b59b6", isAI: true },
-                "ai-3": { id: "ai-3", name: "AI P4", hunger: 100, floor: 0, alive: true, color: "#e67e22", isAI: true }
+                "p1": { name: "나", hunger: 100, floor: 0, alive: true, color: "#2ecc71", isAI: false },
+                "ai1": { name: "AI P2", hunger: 100, floor: 0, alive: true, color: "#3498db", isAI: true },
+                "ai2": { name: "AI P3", hunger: 100, floor: 0, alive: true, color: "#9b59b6", isAI: true },
+                "ai3": { name: "AI P4", hunger: 100, floor: 0, alive: true, color: "#e67e22", isAI: true }
             };
-            runSingleDay();
+            runDayCycle();
         }
 
-        async function runSingleDay() {
-            addLog(`제 ${gameState.day}일이 시작되었습니다.`);
+        async function runDayCycle() {
+            addLog(`제 ${gameState.day}일... 구역이 재배치됩니다.`);
             document.getElementById('blackout').classList.add('active');
             
-            // 층 랜덤 배정
+            // 초기 층 랜덤 배정
             const floors = [1, 2, 3, 4].sort(() => Math.random() - 0.5);
             Object.keys(gameState.players).forEach((id, idx) => {
                 gameState.players[id].floor = floors[idx];
@@ -138,168 +117,152 @@
 
             await new Promise(r => setTimeout(r, 1000));
             document.getElementById('blackout').classList.remove('active');
-            render();
+            isRiding = false;
 
-            // 플랫폼 하강
+            // 플랫폼 하강 (1층 -> 4층)
             for (let f = 1; f <= 4; f++) {
                 gameState.platformLevel = f;
-                updatePlatformUI(f);
+                movePlatformUI(f);
                 
-                const p = Object.values(gameState.players).find(p => p.floor === f && p.alive);
-                if (p) {
-                    if (!p.isAI) {
-                        hasEaten = false;
-                        document.getElementById('action-btn').disabled = false;
-                        await startTimerUI(10);
-                    } else {
-                        // AI는 30~45만큼 랜덤하게 먹음
-                        let eatAmount = Math.min(gameState.food, Math.floor(Math.random() * 15) + 30);
-                        gameState.food -= eatAmount;
-                        p.hunger = Math.min(100, p.hunger + eatAmount);
-                        addLog(`${p.name}이(가) 식사했습니다.`);
-                        await new Promise(r => setTimeout(r, 2000));
-                    }
+                // 내가 이 층에 있거나, 플랫폼에 타고 있는 경우
+                if (gameState.players["p1"].floor === f || isRiding) {
+                    if (isRiding) gameState.players["p1"].floor = f; // 탑승 중이면 내 위치 변경
+                    
+                    document.getElementById('eat-btn').disabled = (gameState.food <= 0);
+                    document.getElementById('ride-btn').disabled = (f === 4); // 4층에선 더 못 내려감
+                    
+                    await startTimer(30); // 30초 대기
+                    
+                    document.getElementById('eat-btn').disabled = true;
+                    document.getElementById('ride-btn').disabled = true;
+                } else {
+                    // AI들 행동 (짧게 연출)
+                    const ais = Object.values(gameState.players).filter(p => p.floor === f && p.isAI && p.alive);
+                    ais.forEach(ai => {
+                        let eat = Math.min(gameState.food, 30);
+                        gameState.food -= eat;
+                        ai.hunger = Math.min(100, ai.hunger + 20);
+                    });
+                    await new Promise(r => setTimeout(r, 2000));
                 }
                 render();
             }
 
-            // 하루 종료 정산
+            // 하루 정산
             Object.values(gameState.players).forEach(p => {
                 p.hunger -= 25;
-                if (p.hunger <= 0) { p.alive = false; addLog(`${p.name} 아사.`); }
+                if (p.hunger <= 0) p.alive = false;
             });
 
-            if (!gameState.players["local-player"].alive) {
-                alert("당신은 굶어 죽었습니다. 게임 오버!");
+            if (!gameState.players["p1"].alive) {
+                alert("아사했습니다. 게임 오버!");
                 location.reload();
-                return;
-            }
-
-            gameState.day++;
-            gameState.food = 120;
-            setTimeout(runSingleDay, 3000);
-        }
-
-        /* --- 멀티 플레이 로직 --- */
-        function createRoom() { socket.emit('createRoom'); }
-        function joinRoom() { 
-            const code = document.getElementById('room-code-input').value.toUpperCase();
-            socket.emit('joinRoom', code); 
-        }
-        function sendStartSignal() { socket.emit('startGame', myRoomCode); }
-
-        socket.on('roomCreated', (code) => {
-            myRoomCode = code;
-            document.getElementById('multi-btns').classList.add('hidden');
-            document.getElementById('lobby-wait').classList.remove('hidden');
-            document.getElementById('display-code').innerText = "CODE: " + code;
-        });
-
-        socket.on('updateRoomInfo', (data) => {
-            isMulti = true;
-            gameState = data;
-            myId = socket.id;
-            if(data.isStarted) {
-                document.getElementById('menu-screen').classList.add('hidden');
-                document.getElementById('game-wrapper').classList.remove('hidden');
-                document.getElementById('mode-text').innerText = "MULTI-ROOM";
-                render();
-            }
-        });
-
-        socket.on('dayStart', (data) => {
-            gameState = data;
-            document.getElementById('blackout').classList.add('active');
-            setTimeout(() => { document.getElementById('blackout').classList.remove('active'); render(); }, 1000);
-        });
-
-        socket.on('platformMove', (f) => {
-            updatePlatformUI(f);
-            const me = gameState.players[myId];
-            if(me && me.floor === f && me.alive && gameState.food > 0) {
-                document.getElementById('action-btn').disabled = false;
-                startTimerUI(10);
-            }
-        });
-
-        /* --- 공통 유틸리티 --- */
-        function handleEat() {
-            if (isMulti) {
-                socket.emit('eatFood', {roomCode: myRoomCode, amount: 40});
             } else {
-                let eatAmount = Math.min(gameState.food, 45);
-                gameState.food -= eatAmount;
-                gameState.players["local-player"].hunger = Math.min(100, gameState.players["local-player"].hunger + 55);
-                addLog("당신이 식사했습니다.");
-                render();
+                gameState.day++;
+                gameState.food = 120;
+                setTimeout(runDayCycle, 3000);
             }
-            document.getElementById('action-btn').disabled = true;
         }
 
-        function updatePlatformUI(f) {
-            document.getElementById('platform-overlay').style.top = `${(f-1) * 25}%`;
-        }
-
-        function startTimerUI(sec) {
+        function startTimer(sec) {
             return new Promise(resolve => {
-                let left = sec;
+                let timeLeft = sec;
                 const display = document.getElementById('timer-display');
+                timerRunning = true;
                 const itv = setInterval(() => {
-                    left--; display.innerText = left;
-                    if(left <= 0) { clearInterval(itv); display.innerText = "WAIT"; resolve(); }
+                    display.innerText = timeLeft;
+                    timeLeft--;
+                    if (timeLeft < 0 || !timerRunning) {
+                        clearInterval(itv);
+                        display.innerText = "WAIT";
+                        resolve();
+                    }
                 }, 1000);
             });
         }
 
-        function render() {
-            const me = gameState.players[myId];
-            if(!me) return;
-            document.getElementById('day-val').innerText = gameState.day;
-            document.getElementById('hunger-val').innerText = me.hunger;
-            document.getElementById('food-val').innerText = gameState.food;
+        function actionEat() {
+            if (gameState.food <= 0) return;
+            gameState.food -= 40;
+            gameState.players["p1"].hunger = Math.min(100, gameState.players["p1"].hunger + 50);
+            document.getElementById('eat-btn').disabled = true;
+            addLog("음식을 섭취했습니다.");
+            render();
+        }
+
+        function actionRide() {
+            isRiding = true;
+            document.getElementById('ride-btn').disabled = true;
+            addLog("플랫폼에 탑승했습니다. 다음 층으로 내려갑니다.");
+            timerRunning = false; // 현재 층 대기 종료하고 즉시 다음 층으로
+        }
+
+        function setChatMode(m) {
+            gameState.currentChat = m;
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.getElementById(`tab-${m}`).classList.add('active');
+            addChatMessage("SYSTEM", `${m === 'global' ? '전체' : '현재 층'} 채널로 전환되었습니다.`);
+        }
+
+        function sendChat() {
+            const input = document.getElementById('chat-input');
+            if (!input.value) return;
             
-            document.querySelectorAll('.floor').forEach(f => {
-                const n = f.querySelector('.floor-num');
-                f.innerHTML = ''; f.appendChild(n);
-            });
+            const myFloor = gameState.players["p1"].floor;
+            addChatMessage("나", input.value, gameState.currentChat);
+            
+            // 층 채팅일 때 AI 반응 확률
+            if (gameState.currentChat === 'floor') {
+                const roomies = Object.values(gameState.players).filter(p => p.floor === myFloor && p.isAI && p.alive);
+                if (roomies.length > 0) {
+                    setTimeout(() => {
+                        addChatMessage(roomies[0].name, "여기 너무 배고프네요...", "floor");
+                    }, 1000);
+                }
+            }
+            input.value = "";
+        }
+
+        function addChatMessage(sender, msg, type = 'global') {
+            const box = document.getElementById('chat-messages');
+            const d = document.createElement('div');
+            d.className = `msg ${type}`;
+            d.innerHTML = `<small>[${type === 'global' ? '전체' : '층'}]</small> <strong>${sender}:</strong> ${msg}`;
+            box.appendChild(d);
+            box.scrollTop = box.scrollHeight;
+        }
+
+        function movePlatformUI(f) {
+            document.getElementById('platform-overlay').style.top = `${(f-1) * 25}%`;
+        }
+
+        function render() {
+            document.getElementById('day-val').innerText = gameState.day;
+            document.getElementById('hunger-val').innerText = gameState.players["p1"].hunger;
+            document.getElementById('food-val').innerText = gameState.food;
+            document.getElementById('floor-val').innerText = gameState.players["p1"].floor;
+
+            for(let i=1; i<=4; i++) {
+                const f = document.getElementById(`floor-${i}`);
+                const num = f.querySelector('.floor-num');
+                f.innerHTML = ''; f.appendChild(num);
+            }
 
             Object.values(gameState.players).forEach(p => {
-                if(p.alive && p.floor > 0) {
-                    const fDiv = document.getElementById(`floor-${p.floor}`);
+                if (p.alive) {
+                    const floorDiv = document.getElementById(`floor-${p.floor}`);
                     const pDiv = document.createElement('div');
-                    pDiv.className = `player ${p.id === myId ? 'you' : ''}`;
+                    pDiv.className = `player ${p.name === "나" ? 'you' : ''}`;
                     pDiv.style.backgroundColor = p.color;
-                    pDiv.innerHTML = `<span style="font-size:10px">${p.name}</span><div class="player-stats">H:${p.hunger}</div>`;
-                    fDiv.appendChild(pDiv);
+                    pDiv.innerHTML = `<span style="font-size:9px">${p.name}</span>`;
+                    floorDiv.appendChild(pDiv);
                 }
             });
         }
 
         function addLog(m) {
-            const log = document.getElementById('system-log');
-            log.innerHTML = `> ${m}<br>` + log.innerHTML;
-        }
-
-        function sendMessage() {
-            const input = document.getElementById('chat-input');
-            if(!input.value) return;
-            if(isMulti) {
-                socket.emit('sendMessage', { roomCode: myRoomCode, text: input.value, sender: "생존자" });
-            } else {
-                addChatMessage("나", input.value);
-            }
-            input.value = "";
-        }
-
-        socket.on('chatMessage', (data) => addChatMessage(data.sender, data.text));
-
-        function addChatMessage(s, t) {
-            const box = document.getElementById('chat-messages');
-            const d = document.createElement('div');
-            d.className = 'msg';
-            d.innerHTML = `<strong>${s}:</strong> ${t}`;
-            box.appendChild(d);
-            box.scrollTop = box.scrollHeight;
+            const box = document.getElementById('log-box');
+            box.innerHTML = `> ${m}<br>` + box.innerHTML;
         }
     </script>
 </body>

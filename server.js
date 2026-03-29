@@ -5,48 +5,33 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, {
-    cors: {
-        origin: "*", // 모든 접속 허용 (Render 배포 시 필수)
-        methods: ["GET", "POST"]
-    }
-});
+const io = new Server(server, { cors: { origin: "*" } });
 
 app.use(express.static(path.join(__dirname, 'public')));
 
 let rooms = {}; 
 
 io.on('connection', (socket) => {
-    console.log('유저 접속:', socket.id);
-
-    // [방 만들기]
+    // [방 생성]
     socket.on('createRoom', (nickname) => {
         const roomCode = Math.random().toString(36).substring(2, 7).toUpperCase();
-        const player = { id: socket.id, name: nickname, hunger: 100, floor: 0, alive: true, color: "#2ecc71" };
-        
         rooms[roomCode] = {
             code: roomCode,
-            players: [player],
-            food: 120,
-            day: 1,
-            isStarted: false
+            players: [{ id: socket.id, name: nickname, hunger: 100, floor: 0, alive: true, color: "#2ecc71" }],
+            food: 120, day: 1, isStarted: false
         };
-
         socket.join(roomCode);
         socket.emit('roomCreated', { roomCode, players: rooms[roomCode].players });
     });
 
     // [방 입장]
     socket.on('joinRoom', (data) => {
-        const { roomCode, nickname } = data;
-        const room = rooms[roomCode];
-
+        const room = rooms[data.roomCode];
         if (room && !room.isStarted && room.players.length < 4) {
-            const player = { id: socket.id, name: nickname, hunger: 100, floor: 0, alive: true, color: "#3498db" };
+            const player = { id: socket.id, name: data.nickname, hunger: 100, floor: 0, alive: true, color: "#3498db" };
             room.players.push(player);
-            socket.join(roomCode);
-            
-            io.to(roomCode).emit('playerJoined', { players: room.players });
+            socket.join(data.roomCode);
+            io.to(data.roomCode).emit('playerJoined', { players: room.players });
         } else {
             socket.emit('joinError', '방이 없거나 가득 찼습니다.');
         }
@@ -54,29 +39,30 @@ io.on('connection', (socket) => {
 
     // [게임 시작]
     socket.on('startGame', (roomCode) => {
-        const room = rooms[roomCode];
-        if (room) {
-            room.isStarted = true;
-            io.to(roomCode).emit('gameStart', { room });
+        if (rooms[roomCode]) {
+            rooms[roomCode].isStarted = true;
+            io.to(roomCode).emit('gameStart', { room: rooms[roomCode] });
         }
     });
 
-    // [음식 동기화]
+    // [액션 동기화: 음식/공격/채팅]
     socket.on('playerEat', (data) => {
-        const room = rooms[data.roomCode];
-        if (room && room.food > 0) {
-            room.food -= 40;
-            io.to(data.roomCode).emit('syncEat', { eaterID: socket.id, newFood: room.food });
+        if (rooms[data.roomCode]) {
+            rooms[data.roomCode].food -= 40;
+            io.to(data.roomCode).emit('syncEat', { eaterID: socket.id, newFood: rooms[data.roomCode].food });
         }
     });
 
-    socket.on('disconnect', () => {
-        console.log('유저 나감:', socket.id);
+    socket.on('playerAttack', (data) => {
+        io.to(data.roomCode).emit('syncAttack', { attackerID: socket.id, targetID: data.targetID, damage: 30 });
     });
+
+    socket.on('sendMsg', (data) => {
+        io.to(data.roomCode).emit('receiveMsg', data);
+    });
+
+    socket.on('disconnect', () => { /* 이탈 처리 로직 추가 가능 */ });
 });
 
-// [중요] Render 배포를 위한 포트 설정
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, '0.0.0.0', () => {
-    console.log(`서버 가동 중: 포트 ${PORT}`);
-});
+server.listen(PORT, '0.0.0.0', () => console.log(`Server running on port ${PORT}`));

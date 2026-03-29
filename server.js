@@ -33,7 +33,7 @@ io.on('connection', (socket) => {
             socket.join(data.roomCode);
             io.to(data.roomCode).emit('playerJoined', { players: room.players });
         } else {
-            socket.emit('joinError', '방이 없거나 가득 찼습니다.');
+            socket.emit('joinError', '방이 없거나 이미 시작된 게임입니다.');
         }
     });
 
@@ -45,24 +45,27 @@ io.on('connection', (socket) => {
         }
     });
 
-    // [액션 동기화: 음식/공격/채팅]
+    // [액션 동기화]
     socket.on('playerEat', (data) => {
-        if (rooms[data.roomCode]) {
-            rooms[data.roomCode].food -= 40;
-            io.to(data.roomCode).emit('syncEat', { eaterID: socket.id, newFood: rooms[data.roomCode].food });
+        const room = rooms[data.roomCode];
+        if (room && room.food > 0) {
+            room.food -= 40;
+            io.to(data.roomCode).emit('syncEat', { eaterID: socket.id, newFood: room.food });
         }
     });
 
     socket.on('playerAttack', (data) => {
-        io.to(data.roomCode).emit('syncAttack', { attackerID: socket.id, targetID: data.targetID, damage: 30 });
+        io.to(data.roomCode).emit('syncAttack', { attackerID: socket.id, targetID: data.targetID });
     });
 
     socket.on('sendMsg', (data) => {
         io.to(data.roomCode).emit('receiveMsg', data);
     });
 
-    socket.on('disconnect', () => { /* 이탈 처리 로직 추가 가능 */ });
+    socket.on('disconnect', () => {
+        // 접속 종료 시 처리 로직(선택 사항)
+    });
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, '0.0.0.0', () => console.log(`Server running on port ${PORT}`));
+server.listen(PORT, '0.0.0.0', () => console.log(`Server is running on port ${PORT}`));

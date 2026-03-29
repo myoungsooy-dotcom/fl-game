@@ -52,17 +52,45 @@ io.on('connection', (socket) => {
 
     // 음식 섭취 (1회 제한 & 수치 반영)
     socket.on('playerEat', (data) => {
-        const room = rooms[data.roomCode];
-        if (!room) return;
-        const p = room.players.find(player => player.id === socket.id);
-        if (p && room.foodCount >= data.amount && p.actionPoints > 0) {
-            room.foodCount -= data.amount;
-            const heal = data.amount === 1 ? 20 : 50;
-            p.hunger = Math.min(100, p.hunger + heal);
-            p.actionPoints = 0; // 즉시 행동 종료
-            io.to(data.roomCode).emit('syncEat', { eaterID: socket.id, newFoodCount: room.foodCount, hunger: p.hunger });
-        }
-    });
+    const room = rooms[data.roomCode];
+    if (!room) return;
+    const p = room.players.find(player => player.id === socket.id);
+    
+    // 음식 섭취 가능 여부만 확인 (음식이 있고, 아직 이번 층에서 안 먹었을 때)
+    if (p && room.foodCount >= data.amount && p.hasEaten === false) {
+        room.foodCount -= data.amount;
+        const heal = data.amount === 1 ? 20 : 50;
+        p.hunger = Math.min(100, p.hunger + heal);
+        
+        // 중요: 음식은 '한 번'만 먹었다고 표시하지만, actionPoints는 깎지 않음
+        p.hasEaten = true; 
+
+        io.to(data.roomCode).emit('syncEat', { 
+            eaterID: socket.id, 
+            newFoodCount: room.foodCount, 
+            hunger: p.hunger 
+        });
+    }
+});
+
+// 새 날이 시작될 때 음식 섭취 여부 초기화
+socket.on('nextDayReady', (roomCode) => {
+    const room = rooms[roomCode];
+    if (room) {
+        room.players.forEach(p => {
+            if(p.alive) {
+                p.hunger -= 30;
+                if(p.hunger < 0) { p.hp += p.hunger; p.hunger = 0; }
+                if(p.hp <= 0) p.alive = false;
+                p.hasEaten = false; // 음식 섭취 여부 초기화
+                p.actionPoints = 1;
+            }
+        });
+        room.foodCount = 8;
+        room.day++;
+        io.to(roomCode).emit('newDayStarted', { room });
+    }
+});
 
     // 공격 시스템
     socket.on('playerAttack', (data) => {

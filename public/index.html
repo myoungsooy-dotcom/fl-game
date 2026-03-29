@@ -155,12 +155,38 @@
         });
 
         function actionEat(amount) {
-            if (turnActionDone || gameState.foodCount < amount) return;
-            socket.emit('playerEat', { roomCode, amount });
-            turnActionDone = true; 
-            disableButtons();
-            render();
-        }
+    // 이미 이번 층에서 음식을 먹었거나 음식이 부족하면 실행 안 함
+    if (hasEatenThisFloor || gameState.foodCount < amount) return;
+
+    socket.emit('playerEat', { roomCode, amount });
+    
+    hasEatenThisFloor = true; // 이번 층에서 음식은 먹었음 (중복 섭취 방지)
+    // turnActionDone = true; <-- 이 줄을 삭제하여 버튼이 잠기지 않게 함
+    
+    addLog(`음식을 ${amount}개 먹었습니다. 다른 행동이 가능합니다!`);
+    render();
+}
+
+function updateButtons(f) {
+    const myP = gameState.players[myID];
+    const isAlive = myP.alive;
+
+    // 음식 버튼: 이번 층에서 아직 안 먹었을 때만 활성화
+    document.getElementById('eat1-btn').disabled = (!isAlive || hasEatenThisFloor || gameState.foodCount < 1);
+    document.getElementById('eat2-btn').disabled = (!isAlive || hasEatenThisFloor || gameState.foodCount < 2);
+    
+    // 플랫폼 탑승 & 무기 관련: 죽지만 않았다면 언제든 가능!
+    document.getElementById('ride-btn').disabled = (!isAlive || f === 4 || isRiding);
+    
+    const wBtn = document.getElementById('weapon-btn');
+    if (weaponStatus === "NOT_MADE") {
+        wBtn.innerText = "파이프 제작";
+        wBtn.disabled = !isAlive;
+    } else {
+        wBtn.innerText = attackUsedThisTurn ? "공격 완료" : "파이프 공격";
+        wBtn.disabled = (!isAlive || attackUsedThisTurn);
+    }
+}
 
         function actionRide() { isRiding = true; document.getElementById('ride-btn').disabled = true; render(); }
 

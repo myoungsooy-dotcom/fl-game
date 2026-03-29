@@ -12,6 +12,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 let rooms = {}; 
 
 io.on('connection', (socket) => {
+    // [방 생성 및 혼자하기]
     socket.on('createRoom', (nickname) => {
         const roomCode = Math.random().toString(36).substring(2, 7).toUpperCase();
         rooms[roomCode] = {
@@ -26,6 +27,7 @@ io.on('connection', (socket) => {
         socket.emit('roomCreated', { roomCode, players: rooms[roomCode].players });
     });
 
+    // [방 입장]
     socket.on('joinRoom', (data) => {
         const room = rooms[data.roomCode];
         if (room && !room.isStarted && room.players.length < 4) {
@@ -46,7 +48,7 @@ io.on('connection', (socket) => {
         }
     });
 
-    // 3번 & 5번: 음식 먹기 처리
+    // [핵심 룰: 음식 섭취 - 1개/2개 중 택1 후 행동 종료]
     socket.on('playerEat', (data) => {
         const room = rooms[data.roomCode];
         if (!room) return;
@@ -54,28 +56,28 @@ io.on('connection', (socket) => {
         
         if (p && room.foodCount >= data.amount && p.actionPoints > 0) {
             room.foodCount -= data.amount;
-            // 5번: 1개 먹기(+20), 2개 먹기(+50) - 밸런스 조정
+            // 5번 룰: 1개(+20), 2개(+50) 허기 회복
             const healAmount = data.amount === 1 ? 20 : 50;
             p.hunger = Math.min(100, p.hunger + healAmount);
             
-            // 3번: 음식은 턴당 한 번만 (1개 혹은 2개 중 선택)
+            // 3번 룰: 음식을 먹으면 즉시 행동력 0 (중복 섭취 방지)
             p.actionPoints = 0; 
 
             io.to(data.roomCode).emit('syncEat', { 
                 eaterID: socket.id, 
                 newFoodCount: room.foodCount,
-                hunger: p.hunger,
-                amount: data.amount
+                hunger: p.hunger
             });
         }
     });
 
+    // [공격 시스템]
     socket.on('playerAttack', (data) => {
         const room = rooms[data.roomCode];
         if(room) {
             const victim = room.players.find(p => p.id === data.targetID);
             if(victim) {
-                victim.hp = Math.max(0, victim.hp - 20); // 공격 시 HP 감소
+                victim.hp = Math.max(0, victim.hp - 20); // 공격 시 HP 20 감소
                 if(victim.hp <= 0) victim.alive = false;
                 io.to(data.roomCode).emit('syncAttack', { 
                     attackerID: socket.id, targetID: data.targetID, newHp: victim.hp, isDead: !victim.alive 
@@ -84,22 +86,23 @@ io.on('connection', (socket) => {
         }
     });
 
+    // [정산 및 다음 날 시작]
     socket.on('nextDayReady', (roomCode) => {
         const room = rooms[roomCode];
         if (room) {
-            // 4번: 매일 허기 30 감소 및 HP 정산
+            // 4번 룰: 매일 허기 30 고정 소무
             room.players.forEach(p => {
                 if(p.alive) {
                     p.hunger -= 30;
                     if(p.hunger < 0) {
-                        p.hp += p.hunger; // 허기가 마이너스면 그만큼 HP 감소
+                        p.hp += p.hunger; // 허기 부족분만큼 HP 감소
                         p.hunger = 0;
                     }
                     if(p.hp <= 0) { p.hp = 0; p.alive = false; }
-                    p.actionPoints = 1; // 행동력 복구
+                    p.actionPoints = 1; // 새 날이 밝으면 행동력 복구
                 }
             });
-            room.foodCount = 8;
+            room.foodCount = 8; // 음식 8개 리필
             room.day++;
             io.to(roomCode).emit('newDayStarted', { room });
         }
@@ -109,4 +112,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, '0.0.0.0', () => console.log(`Server running`));
+server.listen(PORT, '0.0.0.0', () => console.log(`Server is running`));

@@ -30,7 +30,7 @@ io.on('connection', (socket) => {
         console.log(`${nickname} 대기열 합류 (현재: ${waitingPlayers.length}/4)`);
 
         // 4명이 모이면 게임 시작
-        if (waitingPlayers.length >= 4) {
+        if (waitingPlayers.length >= 1) {
             const roomID = 'room_' + Date.now();
             const playersInRoom = waitingPlayers.splice(0, 4);
             

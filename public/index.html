@@ -2,13 +2,14 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>The Platform Royale - Speed Optimized</title>
+    <title>The Platform Royale - Ultimate Multi</title>
     <script src="/socket.io/socket.io.js"></script>
     <style>
-        /* [기존 디자인 및 UI 스타일 유지] */
+        /* [디자인 및 레이아웃] */
         body { background-color: #0d0d0d; color: white; font-family: 'Pretendard', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; overflow: hidden; }
         #blackout { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: black; z-index: 200; pointer-events: none; opacity: 0; transition: opacity 0.4s; }
         #blackout.active { opacity: 1; }
+        
         #menu-screen { position: absolute; width: 100%; height: 100%; background: radial-gradient(circle, #222 0%, #000 100%); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         .menu-title { font-size: 4em; color: #ff4757; text-shadow: 0 0 30px #ff4757; margin-bottom: 40px; font-weight: 900; }
         .btn-menu { display: block; width: 280px; padding: 18px; margin: 12px; background: transparent; color: white; border: 2px solid #ff4757; font-size: 1.3em; cursor: pointer; transition: 0.4s; font-weight: bold; }
@@ -16,24 +17,26 @@
         
         #game-wrapper { display: flex; gap: 20px; padding: 20px; max-width: 1200px; height: 85vh; }
         .hidden { display: none !important; }
+        
         #tower { border: 6px solid #2f3542; width: 280px; background: #1e1e2e; position: relative; flex-shrink: 0; }
         .floor { height: 25%; border-bottom: 2px solid #2f3542; position: relative; display: flex; align-items: center; justify-content: center; gap: 5px; }
         .floor-num { position: absolute; left: 10px; top: 10px; color: #57606f; font-weight: bold; }
         
-        /* 플랫폼 이동 속도 최적화: 1.5s -> 0.6s */
+        /* 플랫폼 최적화 (0.6초) */
         #platform-overlay { width: 100%; height: 25%; background: rgba(255, 159, 26, 0.2); border: 4px solid #ff9f1a; position: absolute; top: -100%; left: 0; transition: top 0.6s cubic-bezier(0.2, 0.8, 0.2, 1); box-shadow: 0 0 25px #ff9f1a; z-index: 5; }
         
-        .player { width: 50px; height: 50px; border-radius: 50%; border: 3px solid white; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: bold; transition: transform 0.2s; }
+        .player { width: 50px; height: 50px; border-radius: 50%; border: 3px solid white; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: bold; transition: all 0.3s; }
         .player.you { border-color: #2ecc71; box-shadow: 0 0 15px #2ecc71; z-index: 10; }
         
         #central-ui { width: 320px; display: flex; flex-direction: column; gap: 15px; }
         .panel { background: #1a1a1a; border: 1px solid #333; padding: 15px; border-radius: 10px; }
         #timer-display { font-size: 3.5em; color: #ff4757; text-align: center; font-weight: 900; }
-        .btn-action { width: 100%; padding: 12px; margin-top: 8px; font-weight: bold; border: none; border-radius: 5px; cursor: pointer; }
+        
+        .btn-action { width: 100%; padding: 12px; margin-top: 8px; font-weight: bold; border: none; border-radius: 5px; cursor: pointer; transition: 0.2s; }
         #eat-btn { background: #ff4757; color: white; }
         #ride-btn { background: #ff9f1a; color: white; }
-        #weapon-btn { background: #57606f; color: white; border: 1px solid #888; }
-        #weapon-btn.ready { background: #747d8c; border-color: #f1f2f6; box-shadow: 0 0 10px #fff; }
+        #weapon-btn { background: #57606f; color: white; }
+        #weapon-btn.ready { background: #ffffff; color: #000; box-shadow: 0 0 15px #fff; }
         button:disabled { background: #333 !important; color: #666 !important; cursor: not-allowed; box-shadow: none !important; }
 
         #chat-panel { width: 350px; background: #1a1a1a; border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; }
@@ -41,7 +44,7 @@
         .tab { flex: 1; padding: 10px; border: none; background: #3d4451; color: #999; cursor: pointer; font-size: 12px; }
         .tab.active { background: #ff4757; color: white; font-weight: bold; }
         #chat-messages { flex: 1; height: 350px; overflow-y: auto; font-size: 13px; padding: 10px; background: #000; }
-        .msg { margin-bottom: 8px; line-height: 1.4; padding: 5px; border-radius: 4px; background: #1a1a1a; }
+        .msg { margin-bottom: 8px; padding: 5px; border-radius: 4px; background: #1a1a1a; }
         .msg.global { border-left: 3px solid #ff4757; }
         .msg.floor { border-left: 3px solid #70a1ff; }
     </style>
@@ -51,8 +54,8 @@
 
     <div id="menu-screen">
         <h1 class="menu-title">THE PLATFORM</h1>
-        <button class="btn-menu" onclick="startGame()">혼자 하기 (AI)</button>
-        <button class="btn-menu" onclick="alert('멀티플레이 대기 중')">함께 하기 (Multi)</button>
+        <button class="btn-menu" onclick="startSingleGame()">혼자 하기 (AI)</button>
+        <button class="btn-menu" onclick="startMultiGame()">함께 하기 (Multi)</button>
     </div>
 
     <div id="game-wrapper" class="hidden">
@@ -93,93 +96,99 @@
     </div>
 
     <script>
-        // 게임 상태 관리 변수들
-        let gameState = { 
-            day: 1, 
-            food: 120, 
-            players: {}, 
-            platformLevel: 0, 
-            currentChat: 'global', 
-            isGameOver: false 
-        };
+        const socket = io();
+        let gameState = { day: 1, food: 120, players: {}, platformLevel: 0, currentChat: 'global', isGameOver: false };
+        let myID = "p1"; 
+        let isMulti = false;
+        let roomID = null;
         let isRiding = false;
-        let weaponStatus = "NOT_MADE"; // NOT_MADE, READY, USED
-        let hasEatenThisFloor = false; // [버그 수정] 한 층에서 한 번만 먹게 체크
+        let weaponStatus = "NOT_MADE";
+        let hasEatenThisFloor = false;
 
-        function startGame() {
-            gameState.isGameOver = false;
-            weaponStatus = "NOT_MADE";
-            hasEatenThisFloor = false;
+        // --- 멀티플레이 입장 로직 ---
+        function startMultiGame() {
+            const nickname = prompt("사용할 닉네임을 입력하세요", "생존자" + Math.floor(Math.random()*1000));
+            addLog("대기열 진입... (4명 필요)");
+            socket.emit('joinGame', nickname);
+        }
+
+        socket.on('gameStart', (data) => {
+            isMulti = true;
+            myID = data.myID;
+            roomID = data.room.id;
+            gameState.players = {};
+            data.room.players.forEach(p => { gameState.players[p.id] = p; });
+            
             document.getElementById('menu-screen').classList.add('hidden');
             document.getElementById('game-wrapper').classList.remove('hidden');
-            
+            runDayCycle();
+        });
+
+        // --- 싱글플레이 입장 로직 ---
+        function startSingleGame() {
+            isMulti = false;
+            myID = "p1";
             gameState.players = {
                 "p1": { name: "나", hunger: 100, floor: 0, alive: true, color: "#2ecc71", isAI: false },
                 "ai1": { name: "AI P2", hunger: 100, floor: 0, alive: true, color: "#3498db", isAI: true },
                 "ai2": { name: "AI P3", hunger: 100, floor: 0, alive: true, color: "#9b59b6", isAI: true },
                 "ai3": { name: "AI P4", hunger: 100, floor: 0, alive: true, color: "#e67e22", isAI: true }
             };
+            document.getElementById('menu-screen').classList.add('hidden');
+            document.getElementById('game-wrapper').classList.remove('hidden');
             runDayCycle();
         }
 
+        // --- 메인 게임 루프 ---
         async function runDayCycle() {
             if (gameState.isGameOver) return;
-            addLog(`제 ${gameState.day}일... 구역 재배치.`);
-            
-            // 1. 검은 화면 연출 및 즉시 재배치
+            addLog(`제 ${gameState.day}일이 시작되었습니다.`);
             document.getElementById('blackout').classList.add('active');
             
-            const alivePlayers = Object.keys(gameState.players).filter(id => gameState.players[id].alive);
+            const aliveIDs = Object.keys(gameState.players).filter(id => gameState.players[id].alive);
             const floors = [1, 2, 3, 4].sort(() => Math.random() - 0.5);
-            alivePlayers.forEach((id, idx) => { gameState.players[id].floor = floors[idx % 4]; });
+            aliveIDs.forEach((id, idx) => { gameState.players[id].floor = floors[idx % 4]; });
             
             isRiding = false;
-            render(); // 화면이 어두울 때 미리 배치 완료
-
+            render();
             await new Promise(r => setTimeout(r, 600));
             document.getElementById('blackout').classList.remove('active');
 
-            // 2. 층별 플랫폼 이동 (1층 ~ 4층)
             for (let f = 1; f <= 4; f++) {
                 if (gameState.isGameOver) break;
-                
-                // 새로운 층에 도착할 때마다 음식 섭취 여부 초기화
-                hasEatenThisFloor = false; 
+                hasEatenThisFloor = false;
                 gameState.platformLevel = f;
                 movePlatformUI(f);
                 
-                const isMeHere = gameState.players["p1"].floor === f || isRiding;
+                const myState = gameState.players[myID];
+                const isMeHere = (myState.floor === f || isRiding);
                 
-                if (isMeHere && gameState.players["p1"].alive) {
-                    if (isRiding) gameState.players["p1"].floor = f; 
+                if (isMeHere && myState.alive) {
+                    if (isRiding) myState.floor = f; 
                     render();
                     updateButtons(f);
-                    await startTimer(30); // 30초 고정 대기
+                    await startTimer(30); 
                     disableButtons();
                 } else {
-                    // 내가 없는 층에서의 AI 행동
-                    Object.values(gameState.players).filter(p => p.floor === f && p.isAI && p.alive).forEach(ai => {
-                        let eat = Math.min(gameState.food, 30);
-                        gameState.food -= eat;
-                        ai.hunger = Math.min(100, ai.hunger + (eat * 1.1));
-                    });
+                    // AI 행동 (싱글모드 전용)
+                    if(!isMulti) {
+                        Object.values(gameState.players).filter(p => p.floor === f && p.isAI && p.alive).forEach(ai => {
+                            let eat = Math.min(gameState.food, 30);
+                            gameState.food -= eat;
+                            ai.hunger = Math.min(100, ai.hunger + (eat * 1.1));
+                        });
+                    }
                     await new Promise(r => setTimeout(r, 1200)); 
                 }
                 render();
                 checkSurvival();
             }
 
-            if (gameState.isGameOver) return;
-
-            // 3. 하루 정산 (허기 감소)
+            // 하루 종료 정산
             Object.values(gameState.players).forEach(p => {
                 if (p.alive) {
                     p.hunger -= 25;
-                    if (p.hunger <= 0) { 
-                        p.hunger = 0; 
-                        p.alive = false; 
-                        addLog(`${p.name}이(가) 아사했습니다.`); 
-                    }
+                    if (p.hunger <= 0) { p.hunger = 0; p.alive = false; addLog(`${p.name} 사망.`); }
                 }
             });
             render();
@@ -192,29 +201,82 @@
             }
         }
 
-        // 버튼 상태 업데이트 (음식 섭취 여부 반영)
-        function updateButtons(f) {
-            const eatBtn = document.getElementById('eat-btn');
-            // 음식을 이미 먹었거나 잔량이 없으면 비활성
-            eatBtn.disabled = (gameState.food <= 0 || hasEatenThisFloor);
-            
-            document.getElementById('ride-btn').disabled = (f === 4 || isRiding);
-            
-            const weaponBtn = document.getElementById('weapon-btn');
-            if (weaponStatus === "NOT_MADE") {
-                weaponBtn.disabled = false;
-                weaponBtn.innerText = "파이프 제작 (1회)";
-                weaponBtn.classList.remove('ready');
-            } else if (weaponStatus === "READY") {
-                const others = Object.values(gameState.players).filter(p => p.floor === gameState.players["p1"].floor && p.name !== "나" && p.alive);
-                weaponBtn.disabled = (others.length === 0);
-                weaponBtn.innerText = "파이프 사용 (대상 -30)";
-                weaponBtn.classList.add('ready');
+        // --- 동기화 액션 함수 ---
+        function actionEat() {
+            if (gameState.food <= 0 || hasEatenThisFloor) return;
+            hasEatenThisFloor = true;
+            if (isMulti) {
+                socket.emit('playerEat', { roomID: roomID, eaterID: myID, amount: 40 });
             } else {
-                weaponBtn.disabled = true;
-                weaponBtn.innerText = "사용 완료";
-                weaponBtn.classList.remove('ready');
+                gameState.food -= 40;
+                gameState.players[myID].hunger = Math.min(100, gameState.players[myID].hunger + 55);
+                render();
             }
+            updateButtons(gameState.platformLevel);
+        }
+
+        function actionRide() {
+            isRiding = true;
+            if (isMulti) socket.emit('playerRide', { riderID: myID });
+            document.getElementById('ride-btn').disabled = true;
+            addLog("플랫폼에 탑승했습니다.");
+            render();
+        }
+
+        function handleWeapon() {
+            if (weaponStatus === "NOT_MADE") {
+                weaponStatus = "READY";
+                addLog("파이프 제작 완료!");
+                updateButtons(gameState.platformLevel);
+            } else if (weaponStatus === "READY") {
+                const target = Object.values(gameState.players).find(p => p.floor === gameState.players[myID].floor && p.id !== myID && p.alive);
+                if (target) {
+                    if (isMulti) {
+                        socket.emit('playerAttack', { targetID: target.id, damage: 30 });
+                    } else {
+                        target.hunger = Math.max(0, target.hunger - 30);
+                        if (target.hunger <= 0) target.alive = false;
+                        addLog(`${target.name}님을 공격했습니다!`);
+                        render(); checkSurvival();
+                    }
+                    weaponStatus = "USED";
+                    updateButtons(gameState.platformLevel);
+                }
+            }
+        }
+
+        // --- 소켓 수신 (멀티플레이 전용) ---
+        socket.on('syncEat', (data) => {
+            gameState.food = data.newFood;
+            const p = gameState.players[data.eaterID];
+            if(p) p.hunger = Math.min(100, p.hunger + 55);
+            render();
+        });
+
+        socket.on('syncAttack', (data) => {
+            const t = gameState.players[data.targetID];
+            if(t) {
+                t.hunger = Math.max(0, t.hunger - data.damage);
+                if(t.hunger <= 0) t.alive = false;
+                addLog(`누군가 공격받았습니다!`);
+            }
+            render(); checkSurvival();
+        });
+
+        socket.on('receiveMsg', (data) => { addChatMessage(data.sender, data.msg, data.type); });
+
+        // --- 시스템 유틸리티 ---
+        function updateButtons(f) {
+            document.getElementById('eat-btn').disabled = (gameState.food <= 0 || hasEatenThisFloor);
+            document.getElementById('ride-btn').disabled = (f === 4 || isRiding);
+            const wBtn = document.getElementById('weapon-btn');
+            if (weaponStatus === "NOT_MADE") { wBtn.disabled = false; wBtn.innerText = "파이프 제작 (1회)"; wBtn.classList.remove('ready'); }
+            else if (weaponStatus === "READY") { 
+                const others = Object.values(gameState.players).filter(p => p.floor === gameState.players[myID].floor && p.id !== myID && p.alive);
+                wBtn.disabled = (others.length === 0);
+                wBtn.innerText = "파이프 사용 (대상 -30)";
+                wBtn.classList.add('ready');
+            } else { wBtn.disabled = true; wBtn.innerText = "사용 완료"; wBtn.classList.remove('ready'); }
         }
 
         function disableButtons() {
@@ -223,47 +285,12 @@
             document.getElementById('weapon-btn').disabled = true;
         }
 
-        function actionEat() {
-            if (gameState.food <= 0 || hasEatenThisFloor) return;
-            
-            gameState.food -= 40;
-            gameState.players["p1"].hunger = Math.min(100, gameState.players["p1"].hunger + 55);
-            hasEatenThisFloor = true; // 먹었음 표시
-            
-            addLog("음식을 섭취했습니다.");
-            updateButtons(gameState.platformLevel);
-            render();
-        }
-
-        function handleWeapon() {
-            if (weaponStatus === "NOT_MADE") {
-                weaponStatus = "READY";
-                addLog("파이프를 제작했습니다! 같은 층에서 사용 가능합니다.");
-                updateButtons(gameState.platformLevel);
-            } else if (weaponStatus === "READY") {
-                const target = Object.values(gameState.players).find(p => p.floor === gameState.players["p1"].floor && p.name !== "나" && p.alive);
-                if (target) {
-                    target.hunger = Math.max(0, target.hunger - 30);
-                    weaponStatus = "USED";
-                    addLog(`${target.name}에게 파이프를 휘둘렀습니다!`);
-                    if (target.hunger === 0) { target.alive = false; addLog(`${target.name} 사망.`); }
-                    updateButtons(gameState.platformLevel);
-                    render();
-                    checkSurvival();
-                }
-            }
-        }
-
         function checkSurvival() {
             const aliveList = Object.values(gameState.players).filter(p => p.alive);
-            if (!gameState.players["p1"].alive) {
-                gameState.isGameOver = true;
-                alert("당신은 굶어 죽었습니다... [GAME OVER]");
-                location.reload();
-            } else if (aliveList.length === 1 && aliveList[0].name === "나") {
-                gameState.isGameOver = true;
-                alert(`VICTORY! ${gameState.day}일째에 최후의 1인이 되었습니다!`);
-                location.reload();
+            if (!gameState.players[myID].alive) {
+                gameState.isGameOver = true; alert("죽었습니다... [GAME OVER]"); location.reload();
+            } else if (aliveList.length === 1 && aliveList[0].id === myID) {
+                gameState.isGameOver = true; alert("최후의 생존자 승리! [VICTORY]"); location.reload();
             }
         }
 
@@ -275,70 +302,44 @@
                     if (gameState.isGameOver) { clearInterval(itv); resolve(); return; }
                     display.innerText = timeLeft;
                     timeLeft--;
-                    if (timeLeft < 0) { 
-                        clearInterval(itv); 
-                        display.innerText = "WAIT"; 
-                        resolve(); 
-                    }
+                    if (timeLeft < 0) { clearInterval(itv); display.innerText = "WAIT"; resolve(); }
                 }, 1000);
             });
-        }
-
-        function actionRide() {
-            isRiding = true;
-            document.getElementById('ride-btn').disabled = true;
-            addLog("플랫폼에 탑승했습니다. 함께 내려갑니다.");
-            render();
-        }
-
-        function setChatMode(m) {
-            gameState.currentChat = m;
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            document.getElementById(`tab-${m}`).classList.add('active');
         }
 
         function sendChat() {
             const input = document.getElementById('chat-input');
             if (!input.value) return;
-            addChatMessage("나", input.value, gameState.currentChat);
+            const data = { sender: gameState.players[myID].name, msg: input.value, type: gameState.currentChat };
+            if (isMulti) socket.emit('sendMsg', data);
+            else addChatMessage("나", input.value, gameState.currentChat);
             input.value = "";
         }
 
-        function addChatMessage(sender, msg, type = 'global') {
+        function addChatMessage(sender, msg, type) {
             const box = document.getElementById('chat-messages');
             const d = document.createElement('div');
             d.className = `msg ${type}`;
-            d.innerHTML = `<small>[${type === 'global' ? '전체' : '층'}]</small> <strong>${sender}:</strong> ${msg}`;
-            box.appendChild(d);
-            box.scrollTop = box.scrollHeight;
+            d.innerHTML = `<strong>${sender}:</strong> ${msg}`;
+            box.appendChild(d); box.scrollTop = box.scrollHeight;
         }
 
-        function movePlatformUI(f) {
-            document.getElementById('platform-overlay').style.top = `${(f-1) * 25}%`;
-        }
+        function movePlatformUI(f) { document.getElementById('platform-overlay').style.top = `${(f-1) * 25}%`; }
 
         function render() {
             document.getElementById('day-val').innerText = gameState.day;
-            document.getElementById('hunger-val').innerText = Math.ceil(gameState.players["p1"].hunger);
+            document.getElementById('hunger-val').innerText = Math.ceil(gameState.players[myID].hunger);
             document.getElementById('food-val').innerText = gameState.food;
-            document.getElementById('floor-val').innerText = gameState.players["p1"].floor;
-
-            for(let i=1; i<=4; i++) {
-                const fDiv = document.getElementById(`floor-${i}`);
-                const num = fDiv.querySelector('.floor-num');
-                fDiv.innerHTML = ''; fDiv.appendChild(num);
-            }
-
+            document.getElementById('floor-val').innerText = gameState.players[myID].floor;
+            for(let i=1; i<=4; i++) { const fDiv = document.getElementById(`floor-${i}`); fDiv.innerHTML = `<span class="floor-num">${i}F</span>`; }
             Object.values(gameState.players).forEach(p => {
                 if (p.alive && p.floor > 0) {
                     const floorDiv = document.getElementById(`floor-${p.floor}`);
-                    if(floorDiv) {
-                        const pDiv = document.createElement('div');
-                        pDiv.className = `player ${p.name === "나" ? 'you' : ''}`;
-                        pDiv.style.backgroundColor = p.color;
-                        pDiv.innerHTML = `<span style="font-size:9px">${p.name}</span><span style="font-size:8px">H:${Math.ceil(p.hunger)}</span>`;
-                        floorDiv.appendChild(pDiv);
-                    }
+                    const pDiv = document.createElement('div');
+                    pDiv.className = `player ${p.id === myID ? 'you' : ''}`;
+                    pDiv.style.backgroundColor = p.color;
+                    pDiv.innerHTML = `<span style="font-size:9px">${p.name}</span><span style="font-size:8px">H:${Math.ceil(p.hunger)}</span>`;
+                    floorDiv.appendChild(pDiv);
                 }
             });
         }

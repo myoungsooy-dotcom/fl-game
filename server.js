@@ -1,109 +1,30 @@
-const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
-const path = require('path');
-
-const app = express();
-const server = http.createServer(app);
-const io = new Server(server);
-
-app.use(express.static(path.join(__dirname, 'public')));
-
-const rooms = {};
-
+// [기존 server.js 내용에 추가/수정]
 io.on('connection', (socket) => {
-    // [방 생성]
-    socket.on('createRoom', () => {
-        const roomCode = Math.random().toString(36).substring(2, 7).toUpperCase();
-        rooms[roomCode] = { 
-            players: {}, 
-            day: 1, 
-            food: 120,
-            platformLevel: 0,
-            isStarted: false
-        };
-        socket.join(roomCode);
-        socket.emit('roomCreated', roomCode);
-    });
+    // ... 입장 로직 유지 ...
 
-    // [방 접속]
-    socket.on('joinRoom', (roomCode) => {
-        if (rooms[roomCode]) {
-            socket.join(roomCode);
-            rooms[roomCode].players[socket.id] = {
-                id: socket.id,
-                name: "접속자",
-                hunger: 100,
-                floor: 0,
-                alive: true,
-                color: '#' + Math.floor(Math.random()*16777215).toString(16)
-            };
-            io.to(roomCode).emit('updateRoomInfo', rooms[roomCode]);
-        } else {
-            socket.emit('errorMsg', '방을 찾을 수 없습니다.');
+    // 음식 먹기 동기화
+    socket.on('playerEat', (data) => {
+        // data: { roomID, eaterID, amount }
+        const room = rooms[data.roomID];
+        if (room) {
+            room.food -= data.amount;
+            io.emit('syncEat', { eaterID: data.eaterID, newFood: room.food });
         }
     });
 
-    // [게임 시작 - 방장 전용]
-    socket.on('startGame', (roomCode) => {
-        if (rooms[roomCode]) {
-            rooms[roomCode].isStarted = true;
-            nextDay(roomCode);
-        }
+    // 플랫폼 탑승 동기화
+    socket.on('playerRide', (data) => {
+        io.emit('syncRide', { riderID: data.riderID });
     });
 
-    // [식사 처리]
-    socket.on('eatFood', ({roomCode, amount}) => {
-        if (rooms[roomCode] && rooms[roomCode].food >= amount) {
-            rooms[roomCode].food -= amount;
-            rooms[roomCode].players[socket.id].hunger = Math.min(100, rooms[roomCode].players[socket.id].hunger + amount);
-            io.to(roomCode).emit('updateRoomInfo', rooms[roomCode]);
-        }
+    // 파이프 공격 동기화
+    socket.on('playerAttack', (data) => {
+        // data: { targetID, damage }
+        io.emit('syncAttack', { attackerID: socket.id, targetID: data.targetID, damage: data.damage });
     });
 
-    // [채팅]
-    socket.on('sendMessage', (data) => {
-        io.to(data.roomCode).emit('chatMessage', data);
-    });
-
-    // [날짜 진행 로직]
-    async function nextDay(roomCode) {
-        if (!rooms[roomCode]) return;
-        
-        // 층 무작위 배정
-        const playerIds = Object.keys(rooms[roomCode].players);
-        const floors = [1, 2, 3, 4].sort(() => Math.random() - 0.5);
-        playerIds.forEach((id, idx) => {
-            rooms[roomCode].players[id].floor = floors[idx] || 0;
-        });
-
-        io.to(roomCode).emit('dayStart', rooms[roomCode]);
-
-        // 플랫폼 하강 시뮬레이션
-        for (let f = 1; f <= 4; f++) {
-            rooms[roomCode].platformLevel = f;
-            io.to(roomCode).emit('platformMove', f);
-            await new Promise(r => setTimeout(r, 10000)); // 각 층당 10초 대기
-        }
-
-        // 하루 종료 후 허기 소모
-        playerIds.forEach(id => {
-            const p = rooms[roomCode].players[id];
-            p.hunger -= 25;
-            if (p.hunger <= 0) p.alive = false;
-        });
-
-        rooms[roomCode].day++;
-        rooms[roomCode].food = 120; // 음식 리셋
-        io.to(roomCode).emit('updateRoomInfo', rooms[roomCode]);
-        
-        setTimeout(() => nextDay(roomCode), 3000);
-    }
-
-    socket.on('disconnect', () => {
-        // 접속 종료 처리 생략 (필요시 추가)
+    // 층 이동 완료 신호 (모든 유저가 준비되면 다음 층으로)
+    socket.on('floorReady', (data) => {
+        io.emit('syncNextFloor', { floor: data.nextFloor });
     });
 });
-
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Server running on ${PORT}`));

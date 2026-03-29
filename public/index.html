@@ -2,123 +2,210 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>더 플랫폼: 로얄 완성판</title>
+    <title>The Platform Royale - Multiplayer Edition</title>
     <script src="/socket.io/socket.io.js"></script>
     <style>
-        body { margin: 0; background: #000; color: #fff; font-family: 'Courier New', Courier, monospace; overflow: hidden; }
-        #menu, #room-menu { position: absolute; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: #111; z-index: 100; }
+        /* [보내주신 CSS 그대로 적용] */
+        body { background-color: #0d0d0d; color: white; font-family: 'Pretendard', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; overflow: hidden; }
+        #blackout { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: black; z-index: 200; pointer-events: none; opacity: 0; transition: opacity 0.6s; }
+        #blackout.active { opacity: 1; }
+        #menu-screen { position: absolute; width: 100%; height: 100%; background: radial-gradient(circle, #222 0%, #000 100%); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .menu-title { font-size: 4em; color: #ff4757; text-shadow: 0 0 30px #ff4757; margin-bottom: 40px; font-weight: 900; }
+        .btn-menu { display: block; width: 280px; padding: 18px; margin: 12px; background: transparent; color: white; border: 2px solid #ff4757; font-size: 1.3em; cursor: pointer; transition: 0.4s; font-weight: bold; }
+        .btn-menu:hover { background: #ff4757; box-shadow: 0 0 20px #ff4757; transform: scale(1.05); }
+        #game-wrapper { display: flex; gap: 20px; padding: 20px; max-width: 1200px; height: 85vh; }
         .hidden { display: none !important; }
-        
-        /* 게임 화면 레이아웃 */
-        #game-container { display: grid; grid-template-columns: 1fr 300px; height: 100vh; }
-        #view-area { position: relative; border-right: 2px solid #333; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-        #ui-area { padding: 20px; background: #111; display: flex; flex-direction: column; }
-        
-        /* 캐릭터 및 플랫폼 비주얼 */
-        .level-info { font-size: 80px; font-weight: bold; color: #555; }
-        #platform { width: 400px; height: 40px; background: #444; border: 4px solid #888; margin-top: 20px; display: none; }
-        #platform.active { background: #fff; box-shadow: 0 0 20px #fff; }
-        
-        #chat-box { flex-grow: 1; border: 1px solid #333; margin: 10px 0; padding: 10px; overflow-y: auto; font-size: 14px; }
-        input { width: 100%; padding: 10px; box-sizing: border-box; background: #222; color: #fff; border: 1px solid #444; }
-        button { padding: 15px 40px; background: #333; color: #fff; border: 1px solid #555; cursor: pointer; font-size: 18px; }
-        button:hover { background: #555; }
+        #tower { border: 6px solid #2f3542; width: 280px; background: #1e1e2e; position: relative; flex-shrink: 0; }
+        .floor { height: 25%; border-bottom: 2px solid #2f3542; position: relative; display: flex; align-items: center; justify-content: center; box-sizing: border-box; }
+        .floor-num { position: absolute; left: 10px; top: 10px; color: #57606f; font-weight: bold; }
+        #platform-overlay { width: 100%; height: 25%; background: rgba(255, 159, 26, 0.1); border: 4px solid #ff9f1a; position: absolute; top: -100%; left: 0; transition: top 1s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 0 25px #ff9f1a; z-index: 5; pointer-events: none; }
+        .player { width: 65px; height: 65px; border-radius: 50%; border: 3px solid white; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: bold; transition: 0.3s; z-index: 10; }
+        .player.you { border-color: #2ecc71; box-shadow: 0 0 15px #2ecc71; }
+        .player-stats { font-size: 10px; margin-top: 2px; }
+        #central-ui { width: 300px; display: flex; flex-direction: column; gap: 15px; }
+        .panel { background: #1a1a1a; border: 1px solid #333; padding: 15px; border-radius: 10px; }
+        #timer-display { font-size: 3em; color: #ff4757; text-align: center; font-weight: 900; }
+        #action-btn { width: 100%; padding: 18px; font-size: 1.1em; font-weight: bold; background: #ff4757; color: white; border: none; cursor: pointer; border-radius: 5px; }
+        #action-btn:disabled { background: #333; color: #666; cursor: not-allowed; }
+        #system-log { height: 120px; overflow-y: auto; font-size: 12px; color: #888; border-top: 1px solid #333; margin-top: 10px; padding-top: 10px; }
+        #chat-panel { width: 350px; background: #1a1a1a; border: 1px solid #333; border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; }
+        #chat-tabs { display: flex; background: #2f3542; }
+        .tab { flex: 1; padding: 10px; border: none; background: #57606f; color: white; cursor: pointer; font-size: 12px; }
+        .tab.active { background: #ff4757; font-weight: bold; }
+        #chat-messages { flex: 1; padding: 15px; overflow-y: auto; font-size: 13px; display: flex; flex-direction: column; gap: 8px; }
+        .msg { padding: 6px 10px; border-radius: 5px; background: #262626; line-height: 1.4; }
+        #chat-input-area { padding: 10px; display: flex; gap: 5px; background: #262626; }
+        #chat-input { flex: 1; background: #000; border: 1px solid #444; color: white; padding: 8px; border-radius: 4px; }
     </style>
 </head>
 <body>
-
-    <div id="menu">
-        <h1>🏢 더 플랫폼: 로얄</h1>
-        <button onclick="showRoomMenu()">멀티플레이 시작</button>
-    </div>
-
-    <div id="room-menu" class="hidden">
-        <h2>구역 설정</h2>
-        <button onclick="createRoom()">새 구역 생성 (방 만들기)</button>
-        <p>또는</p>
-        <input type="text" id="join-code" placeholder="구역 코드 입력" style="width: 200px; text-align: center;">
-        <button onclick="joinRoom()" style="margin-top: 10px;">구역 접속</button>
-    </div>
-
-    <div id="game-container" class="hidden">
-        <div id="view-area">
-            <div id="my-level-text" class="level-info">LEVEL 00</div>
-            <div id="platform"></div>
-            <p id="platform-status">플랫폼 대기 중...</p>
+    <div id="blackout"></div>
+    <div id="menu-screen">
+        <h1 class="menu-title">THE PLATFORM</h1>
+        <div id="main-btns">
+            <button class="btn-menu" onclick="createRoom()">구역 만들기 (방장)</button>
+            <button class="btn-menu" onclick="showJoinInput()">구역 참가하기</button>
         </div>
-        <div id="ui-area">
-            <h3 id="room-id-display">ROOM: ----</h3>
-            <div id="status-bar">HP: 100 | 식사: 가능</div>
-            <div id="chat-box"></div>
-            <input type="text" id="chat-input" placeholder="메시지를 입력하세요...">
+        <div id="join-input" class="hidden">
+            <input type="text" id="room-code-input" placeholder="방 코드 입력" style="padding:15px; font-size:1.5em; text-align:center;">
+            <button class="btn-menu" onclick="joinRoom()">접속</button>
+        </div>
+        <div id="lobby-wait" class="hidden">
+            <h2 id="display-code">CODE: ----</h2>
+            <button class="btn-menu" id="start-btn" onclick="startGame()" style="border-color: #2ecc71;">게임 시작</button>
+            <p>친구들이 접속할 때까지 기다리세요...</p>
+        </div>
+    </div>
+
+    <div id="game-wrapper" class="hidden">
+        <div id="tower">
+            <div id="platform-overlay"></div>
+            <div class="floor" id="floor-1"><span class="floor-num">1F</span></div>
+            <div class="floor" id="floor-2"><span class="floor-num">2F</span></div>
+            <div class="floor" id="floor-3"><span class="floor-num">3F</span></div>
+            <div class="floor" id="floor-4"><span class="floor-num">4F</span></div>
+        </div>
+        <div id="central-ui">
+            <div class="panel">
+                <div style="font-weight:bold; color: #ff9f1a;">DAY <span id="day-val">1</span> | <span id="room-id">ROOM</span></div>
+                <div style="margin: 8px 0;">허기: <span id="hunger-val">100</span> / 100</div>
+                <div>플랫폼 음식: <span id="food-val" style="color:#ff9f1a">0</span></div>
+            </div>
+            <div class="panel">
+                <div id="timer-display">WAIT</div>
+                <button id="action-btn" onclick="eatFood()" disabled>음식 먹기</button>
+                <div id="system-log"></div>
+            </div>
+        </div>
+        <div id="chat-panel">
+            <div id="chat-tabs"><button class="tab active">전체 채팅</button></div>
+            <div id="chat-messages"></div>
+            <div id="chat-input-area">
+                <input type="text" id="chat-input" placeholder="메시지 입력..." onkeypress="if(event.keyCode==13) sendMessage()">
+                <button onclick="sendMessage()">전송</button>
+            </div>
         </div>
     </div>
 
     <script>
         const socket = io();
-        let myData = { room: "", id: "", level: 0 };
+        let myRoomCode = "";
+        let myId = "";
+        let gameData = {};
 
-        function showRoomMenu() {
-            document.getElementById('menu').classList.add('hidden');
-            document.getElementById('room-menu').classList.remove('hidden');
-        }
-
+        // [방 시스템]
         function createRoom() { socket.emit('createRoom'); }
+        function showJoinInput() {
+            document.getElementById('main-btns').classList.add('hidden');
+            document.getElementById('join-input').classList.remove('hidden');
+        }
         function joinRoom() {
-            const code = document.getElementById('join-code').value.toUpperCase();
-            if(code) socket.emit('joinRoom', code);
+            const code = document.getElementById('room-code-input').value.toUpperCase();
+            socket.emit('joinRoom', code);
         }
+        function startGame() { socket.emit('startGame', myRoomCode); }
 
-        socket.on('roomCreated', (code) => enterGame(code));
-        socket.on('joinedRoom', (data) => {
-            myData.level = data.players[data.myId].level;
-            enterGame(data.roomCode);
-            updatePlatform(data.currentPlatform);
+        socket.on('roomCreated', (code) => {
+            myRoomCode = code;
+            document.getElementById('main-btns').classList.add('hidden');
+            document.getElementById('lobby-wait').classList.remove('hidden');
+            document.getElementById('display-code').innerText = "CODE: " + code;
         });
 
-        function enterGame(code) {
-            myData.room = code;
-            document.getElementById('room-menu').classList.add('hidden');
-            document.getElementById('game-container').classList.remove('hidden');
-            document.getElementById('room-id-display').innerText = "구역: " + code;
-            document.getElementById('my-level-text').innerText = "LEVEL " + myData.level;
+        socket.on('updateRoomInfo', (data) => {
+            gameData = data;
+            myId = socket.id;
+            if(data.isStarted) showGame();
+        });
+
+        function showGame() {
+            document.getElementById('menu-screen').classList.add('hidden');
+            document.getElementById('game-wrapper').classList.remove('hidden');
+            render();
         }
 
-        // 플랫폼 이동 수신
-        socket.on('platformMove', (level) => updatePlatform(level));
+        // [멀티플레이 게임 로직]
+        socket.on('dayStart', (data) => {
+            gameData = data;
+            document.getElementById('blackout').classList.add('active');
+            setTimeout(() => {
+                document.getElementById('blackout').classList.remove('active');
+                render();
+            }, 1000);
+        });
 
-        function updatePlatform(level) {
-            const p = document.getElementById('platform');
-            const s = document.getElementById('platform-status');
-            p.style.display = 'block';
+        socket.on('platformMove', (floor) => {
+            const plat = document.getElementById('platform-overlay');
+            plat.style.top = `${(floor-1) * 25}%`;
             
-            if (level === myData.level) {
-                p.classList.add('active');
-                s.innerText = "⭐ 플랫폼 도착! 식사 가능 ⭐";
+            const me = gameData.players[myId];
+            const btn = document.getElementById('action-btn');
+            if(me && me.floor === floor && me.alive && gameData.food > 0) {
+                btn.disabled = false;
+                startTimer(10);
             } else {
-                p.classList.remove('active');
-                s.innerText = `플랫폼이 ${level}층에 있습니다.`;
-            }
-        }
-
-        // 채팅 기능
-        const input = document.getElementById('chat-input');
-        input.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter' && input.value) {
-                socket.emit('sendMessage', { roomCode: myData.room, text: input.value, sender: `Level ${myData.level}` });
-                input.value = "";
+                btn.disabled = true;
             }
         });
 
+        function startTimer(sec) {
+            let left = sec;
+            const display = document.getElementById('timer-display');
+            const itv = setInterval(() => {
+                left--;
+                display.innerText = left;
+                if(left <= 0) { clearInterval(itv); display.innerText = "WAIT"; }
+            }, 1000);
+        }
+
+        function eatFood() {
+            socket.emit('eatFood', {roomCode: myRoomCode, amount: 40});
+            document.getElementById('action-btn').disabled = true;
+        }
+
+        function render() {
+            const me = gameData.players[myId];
+            if(!me) return;
+
+            document.getElementById('day-val').innerText = gameData.day;
+            document.getElementById('hunger-val').innerText = me.hunger;
+            document.getElementById('food-val').innerText = gameData.food;
+            document.getElementById('room-id').innerText = myRoomCode;
+
+            // 플레이어 그리기
+            document.querySelectorAll('.floor').forEach(f => {
+                const n = f.querySelector('.floor-num');
+                f.innerHTML = ''; f.appendChild(n);
+            });
+
+            for(const id in gameData.players) {
+                const p = gameData.players[id];
+                if(p.alive && p.floor > 0) {
+                    const fDiv = document.getElementById(`floor-${p.floor}`);
+                    const pDiv = document.createElement('div');
+                    pDiv.className = `player ${id === myId ? 'you' : ''}`;
+                    pDiv.style.backgroundColor = p.color;
+                    pDiv.innerHTML = `<span style="font-size:10px">${id === myId ? '나' : '생존자'}</span><div class="player-stats">H:${p.hunger}</div>`;
+                    fDiv.appendChild(pDiv);
+                }
+            }
+        }
+
+        // [채팅]
+        function sendMessage() {
+            const input = document.getElementById('chat-input');
+            if(!input.value) return;
+            socket.emit('sendMessage', { roomCode: myRoomCode, text: input.value, sender: socket.id === myId ? "나" : "누군가" });
+            input.value = "";
+        }
         socket.on('chatMessage', (data) => {
-            const box = document.getElementById('chat-box');
-            const m = document.createElement('div');
-            m.innerText = `${data.sender}: ${data.text}`;
-            box.appendChild(m);
+            const box = document.getElementById('chat-messages');
+            const div = document.createElement('div');
+            div.className = 'msg';
+            div.innerHTML = `<strong>${data.sender}:</strong> ${data.text}`;
+            box.appendChild(div);
             box.scrollTop = box.scrollHeight;
         });
-
-        socket.on('errorMsg', (m) => alert(m));
     </script>
 </body>
 </html>

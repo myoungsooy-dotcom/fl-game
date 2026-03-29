@@ -5,40 +5,49 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, {
-    cors: { origin: "*" }
-});
+const io = new Server(server);
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-let players = {}; // 접속한 플레이어 목록
+// 방 정보 저장소
+const rooms = {};
 
 io.on('connection', (socket) => {
-    console.log('새로운 플레이어 접속:', socket.id);
+    console.log('사용자 접속:', socket.id);
 
-    // 플레이어 생성
-    players[socket.id] = {
-        id: socket.id,
-        name: `플레이어_${socket.id.substr(0, 4)}`,
-        floor: Math.floor(Math.random() * 4) + 1,
-        hunger: 100,
-        alive: true
-    };
+    // 방 만들기
+    socket.on('createRoom', () => {
+        const roomCode = Math.random().toString(36).substring(2, 7).toUpperCase();
+        rooms[roomCode] = { players: [] };
+        socket.join(roomCode);
+        socket.emit('roomCreated', roomCode);
+        console.log(`방 생성됨: ${roomCode}`);
+    });
 
-    // 모든 클라이언트에게 현재 플레이어 상태 전송
-    io.emit('updatePlayers', players);
+    // 방 접속하기
+    socket.on('joinRoom', (roomCode) => {
+        if (rooms[roomCode]) {
+            socket.join(roomCode);
+            rooms[roomCode].players.push(socket.id);
+            socket.emit('joinedRoom', roomCode);
+            io.to(roomCode).emit('chatMessage', { system: true, text: `새로운 플레이어가 입구에 도착했습니다.` });
+        } else {
+            socket.emit('errorMsg', '존재하지 않는 방 코드입니다.');
+        }
+    });
 
-    // 채팅 중계
+    // 채팅 메시지 전송
     socket.on('sendMessage', (data) => {
-        io.emit('receiveMessage', data); // 모두에게 전달
+        // data: { roomCode, text, sender }
+        io.to(data.roomCode).emit('chatMessage', data);
     });
 
     socket.on('disconnect', () => {
-        delete players[socket.id];
-        io.emit('updatePlayers', players);
-        console.log('플레이어 퇴장:', socket.id);
+        console.log('사용자 접속 해제');
     });
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`서버가 포트 ${PORT}에서 실행 중...`));
+server.listen(PORT, () => {
+    console.log(`서버가 포트 ${PORT}에서 실행 중입니다.`);
+});

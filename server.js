@@ -32,7 +32,7 @@ io.on('connection', (socket) => {
         // 4명이 모이면 게임 시작
         if (waitingPlayers.length >= 1) {
             const roomID = 'room_' + Date.now();
-            const playersInRoom = waitingPlayers.splice(0, 4);
+            const playersInRoom = waitingPlayers.splice(0, 1);
             
             rooms[roomID] = {
                 id: roomID,
